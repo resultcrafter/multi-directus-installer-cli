@@ -16,6 +16,7 @@ export interface ApplyFlags {
   permissions: boolean;
   programmatic: boolean;
   schema: boolean;
+  serverToken?: boolean;
   settings: boolean;
   templateLocation: string;
   templateType: 'community' | 'github' | 'local';

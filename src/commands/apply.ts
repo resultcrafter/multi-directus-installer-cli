@@ -1,5 +1,5 @@
 import {intro, log, select, text} from '@clack/prompts'
-import { Flags, ux} from '@oclif/core'
+import {Flags, ux} from '@oclif/core'
 import chalk from 'chalk'
 import * as path from 'pathe'
 
@@ -7,6 +7,7 @@ import * as customFlags from '../flags/common.js'
 import {BSL_LICENSE_CTA, BSL_LICENSE_HEADLINE, BSL_LICENSE_TEXT, DIRECTUS_PINK, DIRECTUS_PURPLE, SEPARATOR } from '../lib/constants.js'
 import {type ApplyFlags, validateInteractiveFlags, validateProgrammaticFlags} from '../lib/load/apply-flags.js'
 import apply from '../lib/load/index.js'
+import {loadGenerateToken} from '../lib/load/generate-token.js'
 import {animatedBunny} from '../lib/utils/animated-bunny.js'
 import {getDirectusEmailAndPassword, getDirectusToken, getDirectusUrl, initializeDirectusApi} from '../lib/utils/auth.js'
 import catchError from '../lib/utils/catch-error.js'
@@ -76,6 +77,10 @@ static flags = {
       allowNo: true,
       default: undefined,
       description: 'Load schema (collections, relations)',
+    }),
+    serverToken: Flags.boolean({
+      default: false,
+      description: 'Generate a static token for the admin user after applying template',
     }),
     settings: Flags.boolean({
       allowNo: true,
@@ -225,6 +230,10 @@ static flags = {
 
       ux.action.stop()
 
+      if (validatedFlags.serverToken) {
+        await loadGenerateToken()
+      }
+
       // Track completion before final messages/exit
       if (!validatedFlags.disableTelemetry) {
         await track({
@@ -315,6 +324,10 @@ static flags = {
     await apply(template.directoryPath, validatedFlags)
 
     ux.action.stop()
+
+    if (validatedFlags.serverToken) {
+      await loadGenerateToken()
+    }
 
     // Track completion before final messages/exit
     if (!validatedFlags.disableTelemetry) {
