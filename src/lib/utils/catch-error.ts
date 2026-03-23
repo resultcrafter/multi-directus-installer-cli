@@ -17,6 +17,27 @@ interface ErrorHandlerOptions {
   logToFile?: boolean
 }
 
+export function isValidationError(error: unknown): boolean {
+  if (error instanceof DirectusError) {
+    return error.status === 400
+  }
+  return false
+}
+
+export function getErrorFields(error: unknown): string[] {
+  if (!(error instanceof DirectusError)) return []
+  
+  const fields: string[] = []
+  
+  for (const err of error.errors) {
+    if (err.extensions?.field) {
+      fields.push(String(err.extensions.field))
+    }
+  }
+  
+  return fields
+}
+
 /**
  * Handles errors by formatting them and optionally logging to console and file.
  * @param error - The error to be handled.

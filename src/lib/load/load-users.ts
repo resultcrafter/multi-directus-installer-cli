@@ -1,4 +1,4 @@
-import {createUser, readUsers} from '@directus/sdk'
+import {createUser, readUsers, readMe} from '@directus/sdk'
 import {ux} from '@oclif/core'
 
 import {DIRECTUS_PINK} from '../constants.js'
@@ -6,6 +6,61 @@ import {api} from '../sdk.js'
 import catchError from '../utils/catch-error.js'
 import getRoleIds from '../utils/get-role-ids.js'
 import readFile from '../utils/read-file.js'
+
+const userIdMapping: Map<string, string> = new Map()
+
+export function getUserIdMapping(): Map<string, string> {
+  return userIdMapping
+}
+
+export function extractUserIdsFromContent(content: any[]): string[] {
+  const userIds = new Set<string>()
+  
+  function traverse(obj: any): void {
+    if (obj === null || obj === undefined) return
+    
+    if (Array.isArray(obj)) {
+      obj.forEach(item => traverse(item))
+      return
+    }
+    
+    if (typeof obj === 'object') {
+      for (const [key, value] of Object.entries(obj)) {
+        if ((key === 'user_created' || key === 'user_updated' || key === 'author') 
+            && typeof value === 'string' && value.length > 0) {
+          userIds.add(value)
+        } else {
+          traverse(value)
+        }
+      }
+    }
+  }
+  
+  content.forEach(item => traverse(item))
+  return Array.from(userIds)
+}
+
+export async function createUserIdMapping(content: any[]): Promise<string> {
+  const templateUserIds = extractUserIdsFromContent(content)
+  
+  if (templateUserIds.length === 0) {
+    return ''
+  }
+  
+  try {
+    const me = await api.client.request(readMe())
+    const adminUserId = me.id
+    
+    for (const templateUserId of templateUserIds) {
+      userIdMapping.set(templateUserId, adminUserId)
+    }
+    
+    return adminUserId
+  } catch (error) {
+    catchError(error)
+    return ''
+  }
+}
 
 export default async function loadUsers(
   dir: string,

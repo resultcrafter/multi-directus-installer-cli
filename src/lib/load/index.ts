@@ -8,7 +8,7 @@ import loadCollections from './load-collections.js'
 import loadDashboards from './load-dashboards.js'
 import loadData from './load-data.js'
 import loadExtensions from './load-extensions.js'
-import loadFiles from './load-files.js'
+import loadFiles, { getFileIdMapping } from './load-files.js'
 import loadFlows from './load-flows.js'
 import loadFolders from './load-folders.js'
 import loadPermissions from './load-permissions.js'
@@ -18,7 +18,7 @@ import loadRelations from './load-relations.js'
 import loadRoles from './load-roles.js'
 import loadSettings from './load-settings.js'
 import loadTranslations from './load-translations.js'
-import loadUsers from './load-users.js'
+import loadUsers, { getUserIdMapping } from './load-users.js'
 import updateRequiredFields from './update-required-fields.js'
 
 
@@ -52,7 +52,9 @@ export default async function apply(dir: string, flags: ApplyFlags) {
   }
 
   if (flags.content) {
-    await loadData(source)
+    const fileIdMapping = getFileIdMapping()
+    const userIdMapping = getUserIdMapping()
+    await loadData(source, fileIdMapping, userIdMapping)
   }
 
   if (flags.schema) {
