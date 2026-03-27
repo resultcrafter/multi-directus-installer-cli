@@ -1,8 +1,10 @@
 import { log, spinner } from '@clack/prompts'
 import { ux } from '@oclif/core'
 import { execa } from 'execa'
+import fs from 'node:fs'
 import net from 'node:net'
 import path from 'pathe'
+import dotenv from 'dotenv'
 
 import catchError from '../lib/utils/catch-error.js'
 import { waitFor } from '../lib/utils/wait.js'
@@ -67,11 +69,12 @@ async function checkPort(port: number): Promise<PortCheck> {
 
 /**
  * Check if required ports are available and warn if they're in use
+ * @param directusPort - The port Directus will use (from .env)
  * @returns Promise<void>
  */
-async function checkRequiredPorts(): Promise<void> {
+async function checkRequiredPorts(directusPort: number = 8055): Promise<void> {
   const portsToCheck = [
-    { name: 'Directus API', port: 8055 },
+    { name: 'Directus API', port: directusPort },
     { name: 'PostgreSQL', port: 5432 },
   ]
 
@@ -187,8 +190,16 @@ async function checkImagesExist(imageNames: string[]): Promise<boolean> {
 async function startContainers(cwd: string): Promise<void> {
   const s = spinner()
   try {
+    // Read Directus port from .env file
+    const directusEnvPath = path.join(cwd, '.env')
+    let directusPort = 8055
+    if (fs.existsSync(directusEnvPath)) {
+      const parsed = dotenv.parse(fs.readFileSync(directusEnvPath, 'utf8'))
+      directusPort = parsed.DIRECTUS_PORT ? parseInt(parsed.DIRECTUS_PORT, 10) : 8055
+    }
+
     // Check if required ports are available
-    await checkRequiredPorts()
+    await checkRequiredPorts(directusPort)
 
     // Get required images from compose file
     const requiredImages = await getRequiredImagesFromCompose(cwd);

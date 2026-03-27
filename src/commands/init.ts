@@ -8,7 +8,7 @@ import path from 'pathe'
 
 import {disableTelemetry} from '../flags/common.js'
 import {DIRECTUS_PURPLE} from '../lib/constants.js'
-import {init} from '../lib/init/index.js'
+import {getGitHubToken, init} from '../lib/init/index.js'
 import {animatedBunny} from '../lib/utils/animated-bunny.js'
 import {createGigetString, parseGitHubUrl} from '../lib/utils/parse-github-url.js'
 import {readTemplateConfig} from '../lib/utils/template-config.js'
@@ -111,8 +111,9 @@ private targetDir = '.'
       process.exit(1)
     }
 
-    // Create GitHub service
-    const github = createGitHub()
+    // Create GitHub service with auto-detected token
+    const githubToken = await getGitHubToken()
+    const github = createGitHub(githubToken)
 
     // If no dir is provided, ask for it
     if (!args.directory || args.directory === '.') {

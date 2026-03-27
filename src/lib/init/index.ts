@@ -17,8 +17,40 @@ import {BSL_LICENSE_CTA, BSL_LICENSE_HEADLINE, BSL_LICENSE_TEXT, pinkText} from 
 import catchError from '../utils/catch-error.js'
 import {createGigetString, parseGitHubUrl} from '../utils/parse-github-url.js'
 import {readTemplateConfig} from '../utils/template-config.js'
+import {checkAndNotifyPort} from './port-check.js'
 import {DIRECTUS_CONFIG, DOCKER_CONFIG} from './config.js'
 
+/**
+ * Get GitHub token for API requests.
+ * Checks GIGET_AUTH first, then falls back to gh auth token.
+ */
+export async function getGitHubToken(): Promise<string | undefined> {
+  if (process.env.GIGET_AUTH) {
+    return process.env.GIGET_AUTH
+  }
+
+  try {
+    const {stdout} = await execa('gh', ['auth', 'token'], {reject: false})
+    return stdout.trim() || undefined
+  } catch {
+    return undefined
+  }
+}
+
+function updateEnvFile(envFilePath: string, key: string, value: string): void {
+  if (!fs.existsSync(envFilePath)) return
+
+  let content = fs.readFileSync(envFilePath, 'utf8')
+  const regex = new RegExp(`^${key}=.*`, 'm')
+
+  if (regex.test(content)) {
+    content = content.replace(regex, `${key}=${value}`)
+  } else {
+    content += `\n${key}=${value}`
+  }
+
+  fs.writeFileSync(envFilePath, content)
+}
 
 export async function init({dir, flags}: {dir: string, flags: InitFlags}) {
   // Check target directory
@@ -104,8 +136,35 @@ export async function init({dir, flags}: {dir: string, flags: InitFlags}) {
       fs.copyFileSync(file, envFile)
     }
 
-    // Then read Directus-specific info only from the Directus env file
+    // Check and assign available ports for Directus and Nuxt
     const directusEnvFile = path.join(directusDir, '.env')
+    let directusPort = 8055
+    let nuxtPort = 3000
+
+    // Check Directus port
+    if (fs.existsSync(directusEnvFile)) {
+      const {port, usedDefault} = await checkAndNotifyPort('Directus', 8055)
+      directusPort = port
+      if (!usedDefault) {
+        updateEnvFile(directusEnvFile, 'DIRECTUS_PORT', String(port))
+        updateEnvFile(directusEnvFile, 'PUBLIC_URL', `http://localhost:${port}`)
+      }
+    }
+
+    // Check Nuxt port
+    const nuxtEnvFile = path.join(dir, 'nuxt', '.env')
+    if (fs.existsSync(nuxtEnvFile)) {
+      const {port, usedDefault} = await checkAndNotifyPort('Nuxt', 3000)
+      nuxtPort = port
+      if (!usedDefault) {
+        updateEnvFile(nuxtEnvFile, 'NUXT_PUBLIC_SITE_URL', `http://localhost:${port}`)
+      }
+    }
+
+    // Replace placeholders in frontend config files
+    await replaceFrontendPlaceholders(dir, String(directusPort))
+
+    // Then read Directus-specific info only from the Directus env file
     if (fs.existsSync(directusEnvFile)) {
       const parsedEnv = dotenv.parse(fs.readFileSync(directusEnvFile, 'utf8'))
       directusInfo.email = parsedEnv.ADMIN_EMAIL
@@ -221,6 +280,28 @@ export async function init({dir, flags}: {dir: string, flags: InitFlags}) {
     directusDir,
     frontendDir: flags.frontend ? path.join(dir, flags.frontend) : undefined,
     template,
+  }
+}
+
+/**
+ * Replace placeholders in frontend config files with actual values
+ * Handles {{DIRECTUS_PORT}} placeholder in next.config.ts, astro.config.ts, etc.
+ */
+async function replaceFrontendPlaceholders(dir: string, port: string): Promise<void> {
+  const configFiles = glob.sync(path.join(dir, '**', 'next.config.*'))
+  configFiles.push(...glob.sync(path.join(dir, '**', 'astro.config.*')))
+  configFiles.push(...glob.sync(path.join(dir, '**', 'nuxt.config.*')))
+
+  for (const file of configFiles) {
+    try {
+      const content = fs.readFileSync(file, 'utf8')
+      const updated = content.replace(/\{\{DIRECTUS_PORT\}\}/g, port)
+      if (updated !== content) {
+        fs.writeFileSync(file, updated)
+      }
+    } catch {
+      // Skip files that can't be read/written
+    }
   }
 }
 

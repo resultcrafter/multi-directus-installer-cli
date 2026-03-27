@@ -63,6 +63,20 @@ Available flags:
 
 You can use any public GitHub repository URL for the `--template` parameter, pointing to the specific directory containing the template. This is especially useful for using community-maintained templates or your own custom templates hosted on GitHub.
 
+### Private Repository Access
+
+If you have access to private GitHub repositories containing templates, you need:
+
+1. **Install the `gh` CLI**: https://cli.github.com
+2. **Authenticate with GitHub**: Run `gh auth login`
+
+The CLI automatically detects your GitHub authentication token - no environment variables needed. If you prefer to use an explicit token, you can set the `GIGET_AUTH` environment variable:
+
+```bash
+export GIGET_AUTH=$(gh auth token)
+npx directus-template-cli@latest init --template=agency-os
+```
+
 ### Creating Custom Templates
 
 You can create your own custom templates for use with the `init` command. A template is defined by a `package.json` file with a `directus:template` property that specifies the template configuration.

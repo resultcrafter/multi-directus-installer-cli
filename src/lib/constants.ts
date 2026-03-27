@@ -12,11 +12,11 @@ export const COMMUNITY_TEMPLATE_REPO = {
 }
 
 export const DEFAULT_REPO = {
-  owner: 'directus-labs',
+  owner: 'resultcrafter',
   path: '',
   ref: 'main',
-  repo: 'starters',
-  url: 'https://github.com/directus-labs/starters',
+  repo: 'directus-starters',
+  url: 'https://github.com/resultcrafter/directus-starters',
 }
 
 export const POSTHOG_PUBLIC_KEY = 'phc_STopE6gj6LDIjYonVF7493kQJK8S4v0Xrl6YPr2z9br'
