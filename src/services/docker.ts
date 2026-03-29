@@ -75,7 +75,6 @@ async function checkPort(port: number): Promise<PortCheck> {
 async function checkRequiredPorts(directusPort: number = 8055): Promise<void> {
   const portsToCheck = [
     { name: 'Directus API', port: directusPort },
-    { name: 'PostgreSQL', port: 5432 },
   ]
 
   let hasConflicts = false
@@ -190,7 +189,6 @@ async function checkImagesExist(imageNames: string[]): Promise<boolean> {
 async function startContainers(cwd: string): Promise<void> {
   const s = spinner()
   try {
-    // Read Directus port from .env file
     const directusEnvPath = path.join(cwd, '.env')
     let directusPort = 8055
     if (fs.existsSync(directusEnvPath)) {
@@ -198,31 +196,25 @@ async function startContainers(cwd: string): Promise<void> {
       directusPort = parsed.DIRECTUS_PORT ? parseInt(parsed.DIRECTUS_PORT, 10) : 8055
     }
 
-    // Check if required ports are available
     await checkRequiredPorts(directusPort)
 
-    // Get required images from compose file
     const requiredImages = await getRequiredImagesFromCompose(cwd);
     const imagesExist = await checkImagesExist(requiredImages);
 
-    // Log a message if images need downloading
     if (!imagesExist && requiredImages.length > 0) {
       log.info('Required Docker image(s) are missing and will be downloaded.');
     }
 
-    const startMessage = imagesExist || requiredImages.length === 0 ? 'Starting Docker containers...' : 'Downloading required Docker images...';
-    const endMessage = imagesExist || requiredImages.length === 0 ? 'Docker containers running!' : 'Docker images downloaded and containers started!';
-
-    s.start(startMessage); // Start spinner with the appropriate message
+    s.start('Starting Docker containers...');
 
     await execa('docker', ['compose', 'up', '-d'], {
       cwd,
     })
 
-    s.stop(endMessage); // Update spinner message on success
+    s.stop('Docker containers running!')
 
   } catch (error) {
-    s.stop('Error starting Docker containers.') // Stop spinner on error
+    s.stop('Error starting Docker containers.')
     catchError(error, {
       context: { cwd, function: 'startContainers' },
       fatal: true,

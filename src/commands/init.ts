@@ -15,6 +15,31 @@ import {readTemplateConfig} from '../lib/utils/template-config.js'
 import {createGitHub} from '../services/github.js'
 import { shutdown, track } from '../services/posthog.js'
 import { BaseCommand } from './base.js'
+import resolvePathAndCheckExistence from '../lib/utils/path.js'
+
+function isLocalTemplatePath(templatePath: string): boolean {
+  if (!templatePath) return false
+  const resolved = resolvePathAndCheckExistence(templatePath, true)
+  if (resolved) return true
+  if (templatePath.startsWith('/') || templatePath.startsWith('./') || templatePath.startsWith('~')) {
+    return fs.existsSync(templatePath)
+  }
+  return false
+}
+
+async function copyDirRecursive(src: string, dest: string): Promise<void> {
+  await fs.promises.mkdir(dest, { recursive: true })
+  const entries = await fs.promises.readdir(src, { withFileTypes: true })
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name)
+    const destPath = path.join(dest, entry.name)
+    if (entry.isDirectory()) {
+      await copyDirRecursive(srcPath, destPath)
+    } else {
+      await fs.promises.copyFile(srcPath, destPath)
+    }
+  }
+}
 
 export interface InitFlags {
   disableTelemetry?: boolean
@@ -184,13 +209,14 @@ private targetDir = '.'
 
     // 3. Validate that the template exists in the available list
     const isDirectUrl = template?.startsWith('http')
+    let isLocalPath = isLocalTemplatePath(template || '')
 
-    // Validate against the 'id' property of the template objects
-    while (!isDirectUrl && !availableTemplates.some(t => t.id === template)) {
+    // Validate against the 'id' property of the template objects (skip for local paths)
+    while (!isDirectUrl && !isLocalPath && !availableTemplates.some(t => t.id === template)) {
       // Keep the warning message simple or refer back to the list shown in the prompt
-      clackLog.warn(`Template ID "${template}" is not valid. Please choose from the list provided or enter a direct GitHub URL.`)
+      clackLog.warn(`Template ID "${template}" is not valid. Please choose from the list provided, enter a direct GitHub URL, or a local path.`)
       const templateNameResponse = await text({
-        message: 'Please enter a valid template ID, a direct GitHub URL, or Ctrl+C to cancel:',
+        message: 'Please enter a valid template ID, a direct GitHub URL, a local path, or Ctrl+C to cancel:',
       })
 
       if (isCancel(templateNameResponse)) {
@@ -199,6 +225,7 @@ private targetDir = '.'
       }
 
       template = templateNameResponse as string
+      isLocalPath = isLocalTemplatePath(template || '')
       chosenTemplateObject = availableTemplates.find(t => t.id === template); // Update chosen object after re-entry
     }
 
@@ -209,10 +236,16 @@ private targetDir = '.'
     let chosenFrontend = flags.frontend
 
     try {
-      await downloadTemplate(createGigetString(parseGitHubUrl(template)), {
-        dir: tempDir,
-        force: true,
-      })
+      if (isLocalPath) {
+        // For local paths, copy the directory to tempDir
+        const localPath = resolvePathAndCheckExistence(template || '', true)!
+        await copyDirRecursive(localPath, tempDir)
+      } else {
+        await downloadTemplate(createGigetString(parseGitHubUrl(template)), {
+          dir: tempDir,
+          force: true,
+        })
+      }
 
       // Read template configuration
       const templateInfo = readTemplateConfig(tempDir)
@@ -290,6 +323,7 @@ private targetDir = '.'
     // Initialize the project
     await init({
       dir: this.targetDir,
+      cliRoot: this.config.root as string,
       flags: {
         frontend: chosenFrontend,
         gitInit: initGit,

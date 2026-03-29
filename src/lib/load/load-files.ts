@@ -58,16 +58,18 @@ export default async function loadFiles(dir: string) {
         return true
       })
 
-      await Promise.all(filesToUpload.map(async asset => {
+      const { File } = await import('node:buffer')
+      
+      for (const asset of filesToUpload) {
         const fileName = asset.filename_disk
         const assetPath = path.resolve(dir, 'assets', fileName)
-        const fileStream = new Blob([readFileSync(assetPath)], { type: asset.type })
+        const fileStream = new File([readFileSync(assetPath)], fileName, { type: asset.type })
 
         const form = new FormData()
         form.append('title', asset.title || '')
         if (asset.description) form.append('description', asset.description)
         if (asset.type) form.append('type', asset.type)
-        form.append('file', fileStream, fileName)
+        form.append('file', fileStream as any, fileName)
 
         try {
           const result = await api.client.request(uploadFiles(form as any)) as any
@@ -75,9 +77,9 @@ export default async function loadFiles(dir: string) {
           fileIdMapping.set(asset.id, newId)
           ux.action.status = `Mapped ${asset.filename_disk} -> ${newId}`
         } catch (error) {
-          catchError(error)
+          ux.warn(`Failed ${fileName}: ${error.message}`)
         }
-      }))
+      }
     } catch (error) {
       catchError(error)
     }

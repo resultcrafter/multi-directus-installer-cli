@@ -17,3 +17,5 @@ templates
 .directus-template-cli/logs
 
 tsconfig.tsbuildinfo
+
+scripts/new-project-db-env

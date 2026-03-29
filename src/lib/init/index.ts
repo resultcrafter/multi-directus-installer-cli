@@ -1,4 +1,4 @@
-import {log as clackLog, note, outro, spinner} from '@clack/prompts'
+import {cancel, confirm, isCancel, log as clackLog, note, outro, select, spinner, text} from '@clack/prompts'
 import {ux} from '@oclif/core'
 import chalk from 'chalk'
 import dotenv from 'dotenv'
@@ -6,6 +6,7 @@ import {execa} from 'execa'
 import {downloadTemplate, type DownloadTemplateResult} from 'giget'
 import {glob} from 'glob'
 import fs from 'node:fs'
+import {randomBytes} from 'node:crypto'
 import {detectPackageManager, installDependencies, type PackageManager} from 'nypm'
 import path from 'pathe'
 
@@ -18,7 +19,16 @@ import catchError from '../utils/catch-error.js'
 import {createGigetString, parseGitHubUrl} from '../utils/parse-github-url.js'
 import {readTemplateConfig} from '../utils/template-config.js'
 import {checkAndNotifyPort} from './port-check.js'
-import {DIRECTUS_CONFIG, DOCKER_CONFIG} from './config.js'
+import {DOCKER_CONFIG} from './config.js'
+import resolvePathAndCheckExistence from '../utils/path.js'
+
+function generateSecurePassword(): string {
+  return randomBytes(24).toString('base64').slice(0, 32)
+}
+
+function sanitizeProjectName(projectName: string): string {
+  return projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase()
+}
 
 /**
  * Get GitHub token for API requests.
@@ -37,6 +47,35 @@ export async function getGitHubToken(): Promise<string | undefined> {
   }
 }
 
+async function copyLocalTemplate(localPath: string, targetDir: string): Promise<void> {
+  const entries = await fs.promises.readdir(localPath, {withFileTypes: true})
+
+  for (const entry of entries) {
+    const srcPath = path.join(localPath, entry.name)
+    const destPath = path.join(targetDir, entry.name)
+
+    if (entry.isDirectory()) {
+      await fs.promises.mkdir(destPath, {recursive: true})
+      await copyLocalTemplate(srcPath, destPath)
+    } else {
+      await fs.promises.copyFile(srcPath, destPath)
+    }
+  }
+}
+
+function isLocalTemplatePath(templatePath: string): boolean {
+  if (!templatePath) return false
+
+  const resolved = resolvePathAndCheckExistence(templatePath, true)
+  if (resolved) return true
+
+  if (templatePath.startsWith('/') || templatePath.startsWith('./') || templatePath.startsWith('~')) {
+    return fs.existsSync(templatePath)
+  }
+
+  return false
+}
+
 function updateEnvFile(envFilePath: string, key: string, value: string): void {
   if (!fs.existsSync(envFilePath)) return
 
@@ -52,7 +91,33 @@ function updateEnvFile(envFilePath: string, key: string, value: string): void {
   fs.writeFileSync(envFilePath, content)
 }
 
-export async function init({dir, flags}: {dir: string, flags: InitFlags}) {
+function backupEnvFile(envFilePath: string): void {
+  if (!fs.existsSync(envFilePath)) return
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+  const backupPath = `${envFilePath}.backup-${timestamp}`
+  fs.copyFileSync(envFilePath, backupPath)
+}
+
+function parseConnectionString(connStr: string): {host: string, port: string, database: string, user: string, password: string} | null {
+  try {
+    const match = connStr.match(/^postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)$/)
+    if (match) {
+      return {
+        user: match[1],
+        password: match[2],
+        host: match[3],
+        port: match[4],
+        database: match[5],
+      }
+    }
+  } catch {
+    // Invalid connection string
+  }
+  return null
+}
+
+export async function init({dir, flags, cliRoot}: {dir: string, flags: InitFlags, cliRoot: string}) {
   // Check target directory
   const shouldForce: boolean = flags.overwriteDir
 
@@ -65,30 +130,44 @@ export async function init({dir, flags}: {dir: string, flags: InitFlags}) {
   const directusDir = path.join(dir, 'directus')
   let template: DownloadTemplateResult
   let packageManager: null | PackageManager = null
+  let sourceTemplatePath: string | null = null
 
   try {
-    // Download the template from GitHub
-    const parsedUrl = parseGitHubUrl(flags.template)
+    // Check if template is a local path
+    sourceTemplatePath = isLocalTemplatePath(flags.template || '')
+      ? resolvePathAndCheckExistence(flags.template || '', true)
+      : null
 
-    // If it's a direct URL, we download the entire repository
-    // Otherwise, we use the template from the starters repo
-    template = await downloadTemplate(createGigetString(parsedUrl), {
-      dir,
-      force: shouldForce,
-    })
+    if (sourceTemplatePath) {
+      // Copy local template instead of downloading
+      console.log(`Copying template from local path: ${sourceTemplatePath}`)
+      await copyLocalTemplate(sourceTemplatePath, dir)
+      // Create a mock template result for consistency
+      template = {dir, template: {name: path.basename(sourceTemplatePath)}, downloaded: false} as unknown as DownloadTemplateResult
+    } else {
+      // Download the template from GitHub
+      const parsedUrl = parseGitHubUrl(flags.template)
 
-    // For direct URLs, we need to check if there's a directus directory
-    // If not, assume the entire repo is a directus template
-    if (isDirectUrl && !fs.existsSync(directusDir)) {
-        // Move all files to directus directory
-        fs.mkdirSync(directusDir, {recursive: true})
-        const files = fs.readdirSync(dir)
-        for (const file of files) {
-          if (file !== 'directus') {
-            fs.renameSync(path.join(dir, file), path.join(directusDir, file))
+      // If it's a direct URL, we download the entire repository
+      // Otherwise, we use the template from the starters repo
+      template = await downloadTemplate(createGigetString(parsedUrl), {
+        dir,
+        force: shouldForce,
+      })
+
+      // For direct URLs, we need to check if there's a directus directory
+      // If not, assume the entire repo is a directus template
+      if (isDirectUrl && !fs.existsSync(directusDir)) {
+          // Move all files to directus directory
+          fs.mkdirSync(directusDir, {recursive: true})
+          const files = fs.readdirSync(dir)
+          for (const file of files) {
+            if (file !== 'directus') {
+              fs.renameSync(path.join(dir, file), path.join(directusDir, file))
+            }
           }
         }
-      }
+    }
 
     // Read template configuration
     const templateInfo = readTemplateConfig(dir)
@@ -136,28 +215,215 @@ export async function init({dir, flags}: {dir: string, flags: InitFlags}) {
       fs.copyFileSync(file, envFile)
     }
 
-    // Check and assign available ports for Directus and Nuxt
+    // Ask user about database configuration
+    // Present three options regardless of port status
+    const dbOption = await select({
+      message: 'Which database configuration would you like to use?',
+      options: [
+        {
+          label: 'Embedded PostgreSQL',
+          hint: 'PostgreSQL runs in Docker alongside Directus',
+          value: 'embedded',
+        },
+        {
+          label: 'External PostgreSQL (auto-create user)',
+          hint: 'Create project-specific DB in existing PostgreSQL',
+          value: 'external-auto',
+        },
+        {
+          label: 'External PostgreSQL (enter credentials)',
+          hint: 'Use existing database with provided credentials',
+          value: 'external-manual',
+        },
+      ],
+    })
+
+    if (isCancel(dbOption)) {
+      cancel('Project creation cancelled.')
+      process.exit(0)
+    }
+
+    // Determine DB host based on platform and option
+    let dbHost = 'database'
+
+    if (dbOption !== 'embedded') {
+      dbHost = process.platform === 'darwin' || process.platform === 'win32'
+        ? 'host.docker.internal'
+        : '172.17.0.1'
+    }
+
+    // Generate unique database name for this project
+    const projectName = path.basename(dir)
+
+    // Variables to be set based on dbOption
+    let dbName = ''
+    let dbUser = ''
+    let dbPassword = ''
+
+    // Handle database option
+    if (dbOption === 'embedded') {
+      // Embedded: use template's default database
+      // Copy standalone docker-compose if it exists
+      const standaloneCompose = path.join(directusDir, 'docker-compose.standalone.yaml')
+      const targetCompose = path.join(directusDir, 'docker-compose.yaml')
+      if (fs.existsSync(standaloneCompose)) {
+        fs.copyFileSync(standaloneCompose, targetCompose)
+        clackLog.info('Copied docker-compose.standalone.yaml for embedded PostgreSQL')
+      }
+      dbName = projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_directus'
+      dbUser = 'directus'
+      dbPassword = 'directus'
+    } else if (dbOption === 'external-auto') {
+      // External with auto-create: run init-project-db.sh
+      const externalHost = await text({
+        message: 'Enter PostgreSQL host:',
+        placeholder: 'localhost',
+        initialValue: 'localhost',
+      })
+      if (isCancel(externalHost)) {
+        cancel('Project creation cancelled.')
+        process.exit(0)
+      }
+
+      const hostToUse = (externalHost as string) || 'localhost'
+
+      clackLog.info(`Creating database for project ${projectName} on ${hostToUse}...`)
+
+      try {
+        const scriptPath = path.join(cliRoot, 'scripts', 'init-project-db.sh')
+        await execa(scriptPath, [
+          '--project-name', projectName,
+          '--host', hostToUse,
+          '--output', dir,
+        ], {
+          stdout: 'inherit',
+          stderr: 'inherit',
+        })
+
+        // Read credentials from new-project-db-env
+        const envPath = path.join(dir, 'new-project-db-env')
+        if (fs.existsSync(envPath)) {
+          const envContent = fs.readFileSync(envPath, 'utf8')
+          const dbEnvMatch = (key: string) => {
+            const match = envContent.match(new RegExp(`^${key}=(.+)$`, 'm'))
+            return match ? match[1] : ''
+          }
+          dbName = dbEnvMatch('DB_DATABASE')
+          dbUser = dbEnvMatch('DB_USER')
+          dbPassword = dbEnvMatch('DB_PASSWORD')
+          // For external DB, use host.docker.internal on macOS/windows to reach host's PostgreSQL
+          if (process.platform === 'darwin' || process.platform === 'win32') {
+            dbHost = 'host.docker.internal'
+          } else {
+            dbHost = dbEnvMatch('DB_HOST') || hostToUse
+          }
+        }
+      } catch (error: any) {
+        clackLog.error(`Failed to create database: ${error.message}`)
+        clackLog.info('Please try a different database option or start PostgreSQL and try again.')
+        process.exit(1)
+      }
+    } else if (dbOption === 'external-manual') {
+      // External with manual credentials: prompt for connection string or fields
+      const credsOption = await select({
+        message: 'How would you like to enter credentials?',
+        options: [
+          { label: 'Connection string', value: 'connstr' },
+          { label: 'Individual fields', value: 'fields' },
+        ],
+      })
+
+      if (isCancel(credsOption)) {
+        cancel('Project creation cancelled.')
+        process.exit(0)
+      }
+
+      if (credsOption === 'connstr') {
+        const connStr = await text({
+          message: 'Enter PostgreSQL connection string:',
+          placeholder: 'postgresql://user:password@host:5432/database',
+        })
+        if (isCancel(connStr)) {
+          cancel('Project creation cancelled.')
+          process.exit(0)
+        }
+
+        const parsed = parseConnectionString(connStr as string)
+        if (parsed) {
+          dbUser = parsed.user
+          dbPassword = parsed.password
+          dbHost = parsed.host
+          dbName = parsed.database
+          // dbPort is not in connection string, keep default or ask
+        } else {
+          clackLog.error('Invalid connection string format')
+          process.exit(1)
+        }
+      } else {
+        // Individual fields
+        const manualHost = await text({
+          message: 'Enter PostgreSQL host:',
+          placeholder: 'localhost',
+          initialValue: 'localhost',
+        })
+        const manualPort = await text({
+          message: 'Enter PostgreSQL port:',
+          placeholder: '5432',
+          initialValue: '5432',
+        })
+        const manualDb = await text({
+          message: 'Enter database name:',
+        })
+        const manualUser = await text({
+          message: 'Enter database user:',
+        })
+        const manualPass = await text({
+          message: 'Enter database password:',
+        })
+
+        if (isCancel(manualHost) || isCancel(manualPort) || isCancel(manualDb) || isCancel(manualUser) || isCancel(manualPass)) {
+          cancel('Project creation cancelled.')
+          process.exit(0)
+        }
+
+        dbHost = manualHost as string
+        dbName = manualDb as string
+        dbUser = manualUser as string
+        dbPassword = manualPass as string
+      }
+    }
+
+    // Check and assign available ports for Directus and Nuxt (not DB - it's shared or fixed)
     const directusEnvFile = path.join(directusDir, '.env')
     let directusPort = 8055
     let nuxtPort = 3000
 
+    // Backup .env before modification
+    backupEnvFile(directusEnvFile)
+
     // Check Directus port
     if (fs.existsSync(directusEnvFile)) {
-      const {port, usedDefault} = await checkAndNotifyPort('Directus', 8055)
+      const {port} = await checkAndNotifyPort('Directus', 8055)
       directusPort = port
-      if (!usedDefault) {
-        updateEnvFile(directusEnvFile, 'DIRECTUS_PORT', String(port))
-        updateEnvFile(directusEnvFile, 'PUBLIC_URL', `http://localhost:${port}`)
-      }
+      console.log(`✅ Free Directus port: ${port}`)
+      updateEnvFile(directusEnvFile, 'DIRECTUS_PORT', String(port))
+      updateEnvFile(directusEnvFile, 'PUBLIC_URL', `http://localhost:${port}`)
+      updateEnvFile(directusEnvFile, 'DB_DATABASE', dbName)
+      updateEnvFile(directusEnvFile, 'DB_USER', dbUser)
+      updateEnvFile(directusEnvFile, 'DB_PASSWORD', dbPassword)
+      updateEnvFile(directusEnvFile, 'DB_HOST', dbHost)
     }
 
-    // Check Nuxt port
-    const nuxtEnvFile = path.join(dir, 'nuxt', '.env')
-    if (fs.existsSync(nuxtEnvFile)) {
-      const {port, usedDefault} = await checkAndNotifyPort('Nuxt', 3000)
-      nuxtPort = port
-      if (!usedDefault) {
-        updateEnvFile(nuxtEnvFile, 'NUXT_PUBLIC_SITE_URL', `http://localhost:${port}`)
+    // Check frontend port if frontend directory exists
+    if (frontendDir) {
+      const frontendEnvFile = path.join(frontendDir, '.env')
+      if (fs.existsSync(frontendEnvFile)) {
+        const {port} = await checkAndNotifyPort('Frontend', 3000)
+        nuxtPort = port
+        updateEnvFile(frontendEnvFile, 'NUXT_PUBLIC_SITE_URL', `http://localhost:${port}`)
+        updateEnvFile(frontendEnvFile, 'DIRECTUS_URL', `http://localhost:${directusPort}`)
+        updateEnvFile(frontendEnvFile, 'CONTENT_SECURITY_POLICY_DIRECTIVES__FRAME_SRC',
+          `http://localhost:${port},http://localhost:4321,http://localhost:5173,https://*.youtube.com,https://*.vimeo.com,https://*.wistia.net,https://*.loom.com`)
       }
     }
 
@@ -174,45 +440,37 @@ export async function init({dir, flags}: {dir: string, flags: InitFlags}) {
 
     // Start Directus and apply template only if directus directory exists
     if (fs.existsSync(directusDir)) {
-      // Initialize Docker service
       const dockerService = createDocker(DOCKER_CONFIG)
 
-      // Check if Docker is installed
       const dockerStatus = await dockerService.checkDocker()
       if (!dockerStatus.installed || !dockerStatus.running) {
         throw new Error(dockerStatus.message)
       }
 
+      await dockerService.startContainers(directusDir)
+      const healthCheckUrl = `${directusInfo.url}${DOCKER_CONFIG.healthCheckEndpoint}`
 
-        await dockerService.startContainers(directusDir)
-        const healthCheckUrl = `${directusInfo.url || 'http://localhost:8055'}${DOCKER_CONFIG.healthCheckEndpoint}`
+      const isHealthy = await dockerService.waitForHealthy(healthCheckUrl)
 
-        // Wait for healthy before proceeding
-        const isHealthy = await dockerService.waitForHealthy(healthCheckUrl)
+      if (!isHealthy) {
+        throw new Error('Directus failed to become healthy')
+      }
 
-        if (!isHealthy) {
-          throw new Error('Directus failed to become healthy')
-        }
+      const templatePath = path.join(dir, templateInfo?.config?.template as string)
 
-        // Check if a template path is specified in the config and exists
-        let templatePath: string | undefined;
-        if (templateInfo?.config?.template && typeof templateInfo.config.template === 'string') {
-          templatePath = path.join(dir, templateInfo.config.template); // Path relative to root dir
-        }
-
-        if (templatePath && fs.existsSync(templatePath)) {
-          ux.stdout(`Applying template from: ${templatePath}`)
-          await ApplyCommand.run([
-            `--directusUrl=${directusInfo.url || 'http://localhost:8055'}`,
-            '-p',
-            '--noExit',
-            `--userEmail=${directusInfo.email}`,
-            `--userPassword=${directusInfo.password}`,
-            `--templateLocation=${templatePath}`,
-          ])
-        } else {
-           ux.stdout('Skipping backend template application.')
-        }
+      if (templatePath && fs.existsSync(templatePath)) {
+        ux.stdout(`Applying template from: ${templatePath}`)
+        await ApplyCommand.run([
+          `--directusUrl=${directusInfo.url}`,
+          '-p',
+          '--noExit',
+          `--userEmail=${directusInfo.email}`,
+          `--userPassword=${directusInfo.password}`,
+          `--templateLocation=${templatePath}`,
+        ])
+      } else {
+        ux.stdout('Skipping backend template application.')
+      }
     }
 
     // Detect package manager even if not installing dependencies
@@ -250,18 +508,25 @@ export async function init({dir, flags}: {dir: string, flags: InitFlags}) {
     const relativeDir = path.relative(process.cwd(), dir)
 
     const directusUrl = directusInfo.url ?? 'http://localhost:8055'
+    const directusDirRelative = path.join(relativeDir, 'directus')
+    const frontendDirRelative = flags.frontend ? path.join(relativeDir, flags.frontend) : ''
 
-    const directusText = `- Directus is running on ${directusUrl}. \n`
+    const backendStartText = `- To start Directus: ${pinkText(`cd ${directusDirRelative} && docker compose up -d`)}\n`
     const directusLoginText = directusInfo.email && directusInfo.password
-      ? `- You can login with the email: ${pinkText(directusInfo.email)} and password: ${pinkText(directusInfo.password)}. \n`
-      : `- Complete the onboarding form at ${pinkText(directusInfo.url || 'http://localhost:8055')} to create your admin account. \n`;
-    const frontendText = flags.frontend ? `- To start the frontend, run ${pinkText(`cd ${flags.frontend}`)} and then ${pinkText(`${packageManager?.name} run dev`)}. \n` : ''
-    const projectText = `- Navigate to your project directory using ${pinkText(`cd ${relativeDir}`)}. \n`
-    const readmeText = '- Review the \`./README.md\` file for more information and next steps.'
+      ? `- Login at ${pinkText(directusUrl)} with ${pinkText(directusInfo.email)} / ${pinkText(directusInfo.password)}\n`
+      : `- Complete onboarding at ${pinkText(directusUrl)}\n`
+    const frontendUrlText = frontendDir && fs.existsSync(frontendDir)
+      ? `- Frontend UI: ${pinkText(`http://localhost:${nuxtPort}`)}\n`
+      : ''
+    const frontendStartCmd = flags.frontend
+      ? `- To start frontend: ${pinkText(`cd ${frontendDirRelative} && ${packageManager?.name ?? 'pnpm'} install && ${packageManager?.name ?? 'pnpm'} run dev`)}\n`
+      : ''
+    const projectText = `- Project files: ${pinkText(relativeDir)}\n`
+    const readmeText = `- See ${pinkText(`./README.md`)} for more details`
 
-    const nextSteps = `${directusText}${directusLoginText}${projectText}${frontendText}${readmeText}`
+    const nextSteps = `${backendStartText}${directusLoginText}${frontendUrlText}${frontendStartCmd}${projectText}${readmeText}`
 
-    note(nextSteps, 'Next Steps')
+    note(nextSteps, 'Quick Start')
 
     clackLog.warn(BSL_LICENSE_HEADLINE)
     clackLog.info(BSL_LICENSE_TEXT)

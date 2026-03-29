@@ -1,4 +1,3 @@
-import {execSync} from 'node:child_process'
 import {execa} from 'execa'
 
 export interface PortCheckResult {
@@ -8,18 +7,19 @@ export interface PortCheckResult {
 
 export async function isPortAvailable(port: number): Promise<boolean> {
   try {
-    if (process.platform === 'darwin') {
-      const {stdout} = await execa('lsof', ['-i', `:${port}`, '-sTCP:LISTEN'])
-      return stdout.trim() === ''
-    } else if (process.platform === 'linux') {
-      const {stdout} = await execa('ss', ['-tlpn', `-p:${port}`])
-      return stdout.trim() === ''
-    } else {
-      const {stdout} = await execa('netstat', ['-ano', `-p: ${port}`])
-      return stdout.trim() === ''
-    }
+    const {exitCode} = await execa('nc', ['-z', '-w', '1', 'localhost', String(port)])
+    return exitCode !== 0
   } catch {
     return true
+  }
+}
+
+export async function isPostgresAvailable(): Promise<boolean> {
+  try {
+    const {exitCode} = await execa('nc', ['-z', '-w', '1', 'localhost', '5432'])
+    return exitCode === 0
+  } catch {
+    return false
   }
 }
 

@@ -13,9 +13,10 @@ This tool is best suited for:
 - **Primary Purpose**: Built to deploy templates created by the Directus Core Team. While community templates are supported, the unlimited possible configurations make comprehensive support challenging.
 - **Database Compatibility**: PostgreSQL is recommended. Applying templates that are extracted and applied between different databases (Extract from SQLite ->  Apply to Postgres) can caused issues and is not recommended. MySQL users may encounter known issues.
 - **Performance**: Remote operations (extract/apply) are rate-limited to 10 requests/second using bottleneck. Processing time varies based on your instance size (collections, items, assets).
-- **Version Compatibility**:
+  - **Version Compatibility**:
   - v0.5.0+: Compatible with Directus 11 and up
   - v0.4.0: Use for Directus 10 compatibility (`npx directus-template-cli@0.4 extract/apply`)
+  - **Node.js Compatibility**: Node.js 20.x, 21.x, 22.x, or 23.x recommended. Node.js 24.x has known issues with file uploads.
 
 Using the @latest tag ensures you're receiving the latest version of the packaged templates with the CLI. You can review [the specific versions on NPM](https://www.npmjs.com/package/directus-template-cli) and use @{version} syntax to apply the templates included with that version.
 
@@ -327,6 +328,30 @@ Logs are automatically generated for each run of the CLI. Here's how the logging
 The logger automatically sanitizes sensitive information such as passwords, tokens, and keys before writing to the log file. But it may not catch everything. Just be aware of this and make sure to remove the log files when they are no longer needed.
 
 Note: If you encounter any issues with the CLI, providing these log files can greatly assist in diagnosing and resolving the problem.
+
+## Troubleshooting
+
+### File Upload Errors on Node.js 24
+
+If you encounter `"type is required"` errors when uploading files, this is due to Node.js 24 having stricter Blob/File handling. The Directus SDK internally uses `instanceof File` checks which behave differently.
+
+**Symptoms:**
+- All file uploads fail with `"type is required"` error
+- Directus API returns 400 Bad Request
+
+**Workaround:**
+Use `new File()` instead of `new Blob()` for file uploads:
+
+```typescript
+// Instead of:
+const fileStream = new Blob([buffer], { type: mimeType })
+
+// Use:
+const { File } = await import('node:buffer')
+const fileStream = new File([buffer], filename, { type: mimeType })
+```
+
+**Recommendation:** Use Node.js 22.x for stable file upload behavior with the CLI.
 
 ## License
 

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'pathe';
 
 import { setExecutionContext } from '../services/execution-context.js';
+import { checkNodeVersion } from '../lib/utils/node-version.js';
 
 interface UserConfig {
   distinctId?: null | string;
@@ -25,6 +26,8 @@ export abstract class BaseCommand extends Command {
 
   override async init(): Promise<void> {
     await super.init();
+
+    checkNodeVersion();
 
     const { flags } = await this.parse({
       args: this.ctor.args,
