@@ -20,6 +20,7 @@ import {createGigetString, parseGitHubUrl} from '../utils/parse-github-url.js'
 import {readTemplateConfig} from '../utils/template-config.js'
 import {checkAndNotifyPort} from './port-check.js'
 import {DOCKER_CONFIG} from './config.js'
+import {isSharedPostgresRunning, startSharedPostgres, waitForPostgresReady, getSharedPostgresErrorMessage} from './shared-postgres-manager.js'
 import resolvePathAndCheckExistence from '../utils/path.js'
 
 function generateSecurePassword(): string {
@@ -290,6 +291,33 @@ export async function init({dir, flags, cliRoot}: {dir: string, flags: InitFlags
       clackLog.info(`Creating database for project ${projectName} on ${hostToUse}...`)
 
       try {
+        const status = await isSharedPostgresRunning(cliRoot)
+
+        if (!status.running && status.canAutoStart) {
+          clackLog.info('Shared PostgreSQL is not running. Starting it automatically...')
+          const startResult = await startSharedPostgres(cliRoot)
+
+          if (!startResult.success) {
+            clackLog.error(getSharedPostgresErrorMessage(startResult))
+            clackLog.info('Please try a different database option or start PostgreSQL manually.')
+            process.exit(1)
+          }
+
+          clackLog.info('Shared PostgreSQL started. Waiting for it to be ready...')
+          const ready = await waitForPostgresReady(cliRoot)
+          if (!ready) {
+            clackLog.error('Shared PostgreSQL failed to become ready in time.')
+            clackLog.info('Please try a different database option or start PostgreSQL manually.')
+            process.exit(1)
+          }
+
+          clackLog.info('Shared PostgreSQL is ready.')
+        } else if (!status.running && !status.canAutoStart) {
+          clackLog.error(status.error || 'Cannot auto-start PostgreSQL')
+          clackLog.info('Please try a different database option or start PostgreSQL manually.')
+          process.exit(1)
+        }
+
         const scriptPath = path.join(cliRoot, 'scripts', 'init-project-db.sh')
         await execa(scriptPath, [
           '--project-name', projectName,
@@ -421,6 +449,7 @@ export async function init({dir, flags, cliRoot}: {dir: string, flags: InitFlags
         const {port} = await checkAndNotifyPort('Frontend', 3000)
         nuxtPort = port
         updateEnvFile(frontendEnvFile, 'NUXT_PUBLIC_SITE_URL', `http://localhost:${port}`)
+        updateEnvFile(frontendEnvFile, 'NITRO_PORT', String(port))
         updateEnvFile(frontendEnvFile, 'DIRECTUS_URL', `http://localhost:${directusPort}`)
         updateEnvFile(frontendEnvFile, 'CONTENT_SECURITY_POLICY_DIRECTIVES__FRAME_SRC',
           `http://localhost:${port},http://localhost:4321,http://localhost:5173,https://*.youtube.com,https://*.vimeo.com,https://*.wistia.net,https://*.loom.com`)

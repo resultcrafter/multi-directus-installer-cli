@@ -70,7 +70,7 @@ export default async function apply(dir: string, flags: ApplyFlags) {
   }
 
   if (flags.settings) {
-    await loadSettings(source)
+    await loadSettings(source, getFileIdMapping())
     await loadTranslations(source)
     await loadPresets(source)
   }

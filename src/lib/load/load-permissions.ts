@@ -13,9 +13,11 @@ export default async function loadPermissions(
 
   if (permissions && permissions.length > 0) {
     try {
+      ux.stdout(ux.colorize('dim', `-- [loadPermissions] Reading permissions from API`))
       const existingPermissions = await api.client.request(readPermissions({
         limit: -1,
       }))
+      ux.stdout(ux.colorize('dim', `-- [loadPermissions] Found ${existingPermissions.length} existing permissions`))
 
       const existingPermissionKeys = new Set(
         existingPermissions.map(p => `${p.collection}:${p.action}:${p.policy}`),

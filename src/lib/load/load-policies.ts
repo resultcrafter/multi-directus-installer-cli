@@ -11,9 +11,11 @@ export default async function loadPolicies(dir: string) {
 
   if (policies && policies.length > 0) {
   // Fetch existing policies
+    ux.stdout(ux.colorize('dim', `-- [loadPolicies] Reading policies from API`))
     const existingPolicies = await api.client.request(readPolicies({
       limit: -1,
     }))
+    ux.stdout(ux.colorize('dim', `-- [loadPolicies] Found ${existingPolicies.length} existing policies`))
     const existingPolicyIds = new Set(existingPolicies.map(policy => policy.id))
 
     const PUBLIC_POLICY_ID = 'abf8a154-5b1c-4a46-ac9c-7300570f4f17'

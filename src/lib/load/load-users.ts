@@ -1,4 +1,4 @@
-import {createUser, readUsers, readMe} from '@directus/sdk'
+import {createUser, readMe, readUsers} from '@directus/sdk'
 import {ux} from '@oclif/core'
 
 import {DIRECTUS_PINK} from '../constants.js'
@@ -20,7 +20,7 @@ export function extractUserIdsFromContent(content: any[]): string[] {
     if (obj === null || obj === undefined) return
     
     if (Array.isArray(obj)) {
-      obj.forEach(item => traverse(item))
+      for (const item of obj) traverse(item)
       return
     }
     
@@ -36,8 +36,8 @@ export function extractUserIdsFromContent(content: any[]): string[] {
     }
   }
   
-  content.forEach(item => traverse(item))
-  return Array.from(userIds)
+  for (const item of content) traverse(item)
+  return [...userIds]
 }
 
 export async function createUserIdMapping(content: any[]): Promise<string> {

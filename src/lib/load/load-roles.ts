@@ -15,9 +15,11 @@ export default async function loadRoles(dir: string) {
     const {legacyAdminRoleId, newAdminRoleId} = await getRoleIds(dir)
 
     // Fetch existing roles
+    ux.stdout(ux.colorize('dim', `-- [loadRoles] Reading roles from API`))
     const existingRoles = await api.client.request(readRoles({
       limit: -1,
     }))
+    ux.stdout(ux.colorize('dim', `-- [loadRoles] Found ${existingRoles.length} existing roles`))
     const existingRoleIds = new Set(existingRoles.map(role => role.id))
     const existingRoleNames = new Set(existingRoles.map(role => role.name.toLowerCase()))
 
@@ -34,15 +36,19 @@ export default async function loadRoles(dir: string) {
     for await (const role of cleanedUpRoles) {
       try {
         if (existingRoleIds.has(role.id)) {
+          ux.stdout(ux.colorize('dim', `-- [loadRoles] Skipping ${role.name} - already exists`))
           continue
         }
 
         // Create new role
+        ux.stdout(ux.colorize('dim', `-- [loadRoles] Creating role: ${role.name} (${role.id})`))
         await api.client.request(createRole(role))
+        ux.stdout(ux.colorize('dim', `-- [loadRoles] Created role: ${role.name}`))
         // Add the new role ID and name to our sets of existing roles
         existingRoleIds.add(role.id)
         existingRoleNames.add(role.name.toLowerCase())
       } catch (error) {
+        ux.stdout(ux.colorize('yellow', `-- [loadRoles] ERROR creating role ${role.name}: ${error instanceof Error ? error.message : String(error)}`))
         catchError(error)
       }
     }

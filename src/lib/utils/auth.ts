@@ -1,5 +1,5 @@
 import {isCancel, log, password, text} from '@clack/prompts'
-import {readMe} from '@directus/sdk'
+import {readMe, readItems} from '@directus/sdk'
 import {ux} from '@oclif/core'
 import process from 'node:process'
 
@@ -126,7 +126,7 @@ export async function initializeDirectusApi(flags: AuthFlags): Promise<void> {
       await api.login(flags.userEmail, flags.userPassword)
     }
 
-    const response = await api.client.request(readMe())
+    const response = await api.client.request(readMe()) as any
     ux.stdout(`-- Logged in as ${response.first_name} ${response.last_name}`)
   } catch {
     catchError('-- Unable to authenticate with the provided credentials. Please check your credentials.', {

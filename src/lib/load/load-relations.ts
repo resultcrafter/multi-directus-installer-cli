@@ -38,15 +38,21 @@ export default async function loadRelations(dir: string) {
     await addRelations(relationsToAdd)
   }
 
+  ux.stdout(ux.colorize('dim', `-- [loadRelations] Finished, calling stop()`))
   ux.action.stop()
+  ux.stdout(ux.colorize('dim', `-- [loadRelations] Done`))
 }
 
 async function addRelations(relations: any[]) {
+  ux.stdout(ux.colorize('dim', `-- [addRelations] Starting ${relations.length} relation creates`))
   for await (const relation of relations) {
     try {
+      ux.stdout(ux.colorize('dim', `-- [addRelations] Creating: ${relation.collection}.${relation.field}`))
       await api.client.request(createRelation(relation))
     } catch (error) {
       catchError(error)
     }
   }
+
+  ux.stdout(ux.colorize('dim', `-- [addRelations] Finished all relations`))
 }

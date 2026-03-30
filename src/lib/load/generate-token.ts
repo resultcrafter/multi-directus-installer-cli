@@ -11,6 +11,7 @@ function generateRandomToken(length = 32): string {
   for (let i = 0; i < length; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length))
   }
+
   return result
 }
 
@@ -20,7 +21,7 @@ export interface TokenResult {
   userId: string
 }
 
-export async function generateStaticToken(): Promise<TokenResult | null> {
+export async function generateStaticToken(): Promise<null | TokenResult> {
   try {
     const users = await api.client.request(readUsers({limit: -1})) as any[]
 

@@ -3,62 +3,45 @@ import type {DirectusSettings} from '@directus/sdk'
 
 import {readSettings, updateSettings} from '@directus/sdk'
 import {ux} from '@oclif/core'
-import {createDefu} from 'defu'
+import {defu} from 'defu'
 
 import {DIRECTUS_PINK} from '../constants.js'
 import {api} from '../sdk.js'
 import catchError from '../utils/catch-error.js'
 import readFile from '../utils/read-file.js'
 
-// Cast ux to any to bypass type errors
-const customDefu = createDefu((obj, key, value) => {
-  if (Array.isArray(obj[key]) && Array.isArray(value)) {
-    // @ts-ignore - ignore
-    obj[key] = mergeArrays(key, obj[key], value)
-    return true
+const FILE_ID_FIELDS = ['project_logo', 'public_favicon', 'public_foreground', 'public_background']
+
+function transformFileIds(settings: any, fileIdMapping: Map<string, string>): any {
+  if (!settings || typeof settings !== 'object') return settings
+  
+  const result = { ...settings }
+  
+  for (const field of FILE_ID_FIELDS) {
+    if (result[field] && typeof result[field] === 'string' && fileIdMapping.has(result[field])) {
+      const originalId = result[field]
+      const mappedId = fileIdMapping.get(originalId)!
+      result[field] = mappedId
+      ux.stdout(ux.colorize('dim', `-- [loadSettings] Transformed ${field}: ${originalId} -> ${mappedId}`))
+    }
   }
-
-  if (typeof obj[key] === 'string' && typeof value === 'string') {
-    // @ts-ignore - ignore
-    obj[key] = mergeJsonStrings(obj[key], value)
-    return true
-  }
-})
-
-function mergeArrays(key: string, current: any[], incoming: any[]): any[] {
-  const mergeKeys = {
-     
-    basemaps: ['key'],
-    custom_aspect_ratios: ['key'],
-    module_bar: ['id', 'type'],
-    storage_asset_presets: ['key'],
-     
-  }
-
-  const keys = mergeKeys[key as keyof typeof mergeKeys]
-  if (!keys) return [...new Set([...current, ...incoming])]
-
-  return current.concat(
-    incoming.filter(item => !current.some(
-      currentItem => keys.every(k => currentItem[k] === item[k]),
-    )),
-  )
+  
+  return result
 }
 
-function mergeJsonStrings(current: string, incoming: string): string {
-  try {
-    return JSON.stringify(customDefu(JSON.parse(current), JSON.parse(incoming)))
-  } catch {
-    return incoming // If not valid JSON, return the incoming value
-  }
-}
-
-export default async function loadSettings(dir: string) {
+export default async function loadSettings(dir: string, fileIdMapping?: Map<string, string>) {
   ux.action.start(ux.colorize(DIRECTUS_PINK, 'Loading settings'))
   const settings = readFile('settings', dir)
+  
+  if (fileIdMapping && fileIdMapping.size > 0) {
+    ux.stdout(ux.colorize('dim', `-- [loadSettings] Transforming file ID references...`))
+  }
+  
+  const transformedSettings = fileIdMapping ? transformFileIds(settings, fileIdMapping) : settings
+  
   try {
     const currentSettings = await api.client.request(readSettings())
-    const mergedSettings = customDefu(currentSettings as any, settings) as DirectusSettings
+    const mergedSettings = defu(currentSettings, transformedSettings) as DirectusSettings
     await api.client.request(updateSettings(mergedSettings))
   } catch (error) {
     catchError(error)
