@@ -487,7 +487,10 @@ export async function init({dir, flags, cliRoot}: {dir: string, flags: InitFlags
 
       const templatePath = path.join(dir, templateInfo?.config?.template as string)
 
-      if (templatePath && fs.existsSync(templatePath)) {
+      // Skip template application if blank mode is enabled
+      if (flags.blank) {
+        ux.stdout('Skipping template application (blank mode).')
+      } else if (templatePath && fs.existsSync(templatePath)) {
         ux.stdout(`Applying template from: ${templatePath}`)
         await ApplyCommand.run([
           `--directusUrl=${directusInfo.url}`,
@@ -553,9 +556,15 @@ export async function init({dir, flags, cliRoot}: {dir: string, flags: InitFlags
     const projectText = `- Project files: ${pinkText(relativeDir)}\n`
     const readmeText = `- See ${pinkText(`./README.md`)} for more details`
 
-    const nextSteps = `${backendStartText}${directusLoginText}${frontendUrlText}${frontendStartCmd}${projectText}${readmeText}`
-
-    note(nextSteps, 'Quick Start')
+    let nextSteps: string
+    if (flags.blank) {
+      const applyText = pinkText('directus-template-cli apply')
+      nextSteps = `${backendStartText}${directusLoginText}${frontendUrlText}${frontendStartCmd}${projectText}${readmeText}\n- To apply a template later: ${applyText}`
+      note(nextSteps, 'Blank Directus Ready')
+    } else {
+      nextSteps = `${backendStartText}${directusLoginText}${frontendUrlText}${frontendStartCmd}${projectText}${readmeText}`
+      note(nextSteps, 'Quick Start')
+    }
 
     clackLog.warn(BSL_LICENSE_HEADLINE)
     clackLog.info(BSL_LICENSE_TEXT)

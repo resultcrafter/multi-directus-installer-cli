@@ -42,6 +42,7 @@ async function copyDirRecursive(src: string, dest: string): Promise<void> {
 }
 
 export interface InitFlags {
+  blank?: boolean
   disableTelemetry?: boolean
   frontend?: string
   gitInit?: boolean
@@ -68,8 +69,13 @@ static examples = [
     '$ directus-template-cli init my-project',
     '$ directus-template-cli init --frontend=nextjs --template=simple-cms',
     '$ directus-template-cli init my-project --frontend=nextjs --template=simple-cms',
+    '$ directus-template-cli init my-project --blank',
   ]
 static flags = {
+    blank: Flags.boolean({
+      description: 'Start Directus without applying a template (blank instance)',
+      default: false,
+    }),
     disableTelemetry,
     frontend: Flags.string({
       description: 'Frontend framework to use (e.g., nextjs, nuxt, astro)',
@@ -325,6 +331,7 @@ private targetDir = '.'
       dir: this.targetDir,
       cliRoot: this.config.root as string,
       flags: {
+        blank: flags.blank,
         frontend: chosenFrontend,
         gitInit: initGit,
         installDeps,
