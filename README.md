@@ -56,11 +56,45 @@ npx directus-template-cli@latest init --template=https://github.com/directus-lab
 Available flags:
 
 - `--frontend`: Frontend framework to use (e.g., nextjs, nuxt, astro)
+- `--blank`: Start Directus without applying a template (blank instance)
 - `--gitInit`: Initialize a new Git repository (defaults to true, use --no-gitInit to disable)
 - `--installDeps`: Install dependencies automatically (defaults to true, use --no-installDeps to disable)
 - `--overwriteDir`: Override the default directory if it already exists (defaults to false)
 - `--template`: Template name (e.g., simple-cms) or GitHub URL (e.g., https://github.com/directus-labs/starters/tree/main/cms)
 - `--disableTelemetry`: Disable telemetry collection
+
+### 3-Step Setup (Blank Directus First, Apply Template Later)
+
+For flexible workflows, you can start a blank Directus instance first and apply a template later:
+
+**Step 1: Database Setup** (if using external PostgreSQL)
+```bash
+# Start CLI's built-in shared PostgreSQL (one-time)
+cd ~/.directus-template-cli/scripts/shared-postgres
+docker compose up -d
+```
+
+**Step 2: Install Blank Directus**
+```bash
+npx directus-template-cli@latest init my-project --blank
+# Select: External PostgreSQL (auto-create user) or Embedded PostgreSQL
+```
+
+This starts Directus without applying a template. Output shows:
+```
+Directus is running at http://localhost:8055
+To apply a template later: directus-template-cli apply
+```
+
+**Step 3: Apply Template**
+```bash
+npx directus-template-cli@latest apply --directusUrl=http://localhost:8055 --directusToken="your-token"
+```
+
+**Use cases for 3-step setup:**
+- Start Directus first, decide on template later
+- Connect to a remote Directus that's already running
+- Apply different templates to the same blank Directus instance
 
 You can use any public GitHub repository URL for the `--template` parameter, pointing to the specific directory containing the template. This is especially useful for using community-maintained templates or your own custom templates hosted on GitHub.
 
