@@ -100,12 +100,13 @@ You can use any public GitHub repository URL for the `--template` parameter, poi
 
 ### Private Repository Access
 
-If you have access to private GitHub repositories containing templates, you need:
+If you have access to private GitHub repositories containing templates (e.g., `resultcrafter/directus-starters`), you need:
 
 1. **Install the `gh` CLI**: https://cli.github.com
 2. **Authenticate with GitHub**: Run `gh auth login`
+3. **Ensure repository access**: The authenticated GitHub user must have access to the private repository (e.g., `resultcrafter/directus-starters`)
 
-The CLI automatically detects your GitHub authentication token - no environment variables needed. If you prefer to use an explicit token, you can set the `GIGET_AUTH` environment variable:
+The CLI automatically detects your GitHub authentication token from `gh`. If you prefer to use an explicit token, you can set the `GIGET_AUTH` environment variable:
 
 ```bash
 export GIGET_AUTH=$(gh auth token)

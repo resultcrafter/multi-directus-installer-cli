@@ -148,12 +148,14 @@ export async function init({dir, flags, cliRoot}: {dir: string, flags: InitFlags
     } else {
       // Download the template from GitHub
       const parsedUrl = parseGitHubUrl(flags.template)
+      const authToken = await getGitHubToken()
 
       // If it's a direct URL, we download the entire repository
       // Otherwise, we use the template from the starters repo
       template = await downloadTemplate(createGigetString(parsedUrl), {
         dir,
         force: shouldForce,
+        auth: authToken,
       })
 
       // For direct URLs, we need to check if there's a directus directory
