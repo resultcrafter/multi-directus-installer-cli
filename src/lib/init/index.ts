@@ -12,7 +12,7 @@ import path from 'pathe'
 
 import type {InitFlags} from '../../commands/init.js'
 
-import ApplyCommand from '../../commands/apply.js'
+import ApplyBackendCommand from '../../commands/import-backend-data.js'
 import {createDocker} from '../../services/docker.js'
 import {BSL_LICENSE_CTA, BSL_LICENSE_HEADLINE, BSL_LICENSE_TEXT, pinkText} from '../constants.js'
 import catchError from '../utils/catch-error.js'
@@ -494,7 +494,7 @@ export async function init({dir, flags, cliRoot}: {dir: string, flags: InitFlags
         ux.stdout('Skipping template application (blank mode).')
       } else if (templatePath && fs.existsSync(templatePath)) {
         ux.stdout(`Applying template from: ${templatePath}`)
-        await ApplyCommand.run([
+        await ApplyBackendCommand.run([
           `--directusUrl=${directusInfo.url}`,
           '-p',
           '--noExit',
@@ -560,8 +560,8 @@ export async function init({dir, flags, cliRoot}: {dir: string, flags: InitFlags
 
     let nextSteps: string
     if (flags.blank) {
-      const applyText = pinkText('directus-template-cli apply')
-      nextSteps = `${backendStartText}${directusLoginText}${frontendUrlText}${frontendStartCmd}${projectText}${readmeText}\n- To apply a template later: ${applyText}`
+      const importText = pinkText('directus-template-cli import-backend-data')
+      nextSteps = `${directusLoginText}${frontendUrlText}${frontendStartCmd}${projectText}${readmeText}\n- Directus is already running\n- To apply a template: ${importText}`
       note(nextSteps, 'Blank Directus Ready')
     } else {
       nextSteps = `${backendStartText}${directusLoginText}${frontendUrlText}${frontendStartCmd}${projectText}${readmeText}`

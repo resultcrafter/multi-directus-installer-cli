@@ -22,7 +22,7 @@ import loadUsers, { getUserIdMapping } from './load-users.js'
 import updateRequiredFields from './update-required-fields.js'
 
 
-export default async function apply(dir: string, flags: ApplyFlags) {
+export default async function importBackendData(dir: string, flags: ApplyFlags) {
   const source = `${dir}/src`
   const isTemplateOk = await checkTemplate(source)
   if (!isTemplateOk) {

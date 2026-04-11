@@ -83,12 +83,12 @@ npx directus-template-cli@latest init my-project --blank
 This starts Directus without applying a template. Output shows:
 ```
 Directus is running at http://localhost:8055
-To apply a template later: directus-template-cli apply
+To apply a template later: directus-template-cli import-backend-data
 ```
 
-**Step 3: Apply Template**
+**Step 3: Apply Backend Template**
 ```bash
-npx directus-template-cli@latest apply --directusUrl=http://localhost:8055 --directusToken="your-token"
+npx directus-template-cli@latest import-backend-data --directusUrl=http://localhost:8055 --directusToken="your-token"
 ```
 
 **Use cases for 3-step setup:**
@@ -168,7 +168,7 @@ When you use this template with the `init` command, it will:
 
 > **Note**: The template directory (`./directus/template` in the example above) should contain a valid Directus template created using the `extract` command. The directory structure should match what is created by the CLI when extracting a template, with subdirectories for schema, permissions, content, etc.
 
-## Applying a Template
+## Applying a Backend Template
 
 🚧 Make backups of your project/database before applying templates.
 
@@ -178,10 +178,12 @@ When you use this template with the `init` command, it will:
 4. Run the following command on the terminal and follow the prompts.
 
 ```
-npx directus-template-cli@latest apply
+npx directus-template-cli@latest import-backend-data
 ```
 
-You can choose from our community maintained templates or you can also choose a template from a local directory or a public GitHub repository.
+You can choose from community templates, ResultCrafter templates, or from a local directory or a public GitHub repository.
+
+**Fresh Directus Onboarding:** If applying to a fresh Directus instance (no admin account yet), the CLI will guide you through creating your first admin account and generating an access token.
 
 
 ### Programmatic Mode
@@ -192,22 +194,21 @@ By default, the CLI will run in interactive mode. For CI/CD pipelines or automat
 Using a token:
 
 ```
-npx directus-template-cli@latest apply -p --directusUrl="http://localhost:8055" --directusToken="admin-token-here" --templateLocation="./my-template" --templateType="local"
+npx directus-template-cli@latest import-backend-data -p --directusUrl="http://localhost:8055" --directusToken="admin-token-here" --templateLocation="./my-template" --templateType="local"
 ```
 
 Using email/password:
 
 ```
-npx directus-template-cli@latest apply -p --directusUrl="http://localhost:8055" --userEmail="admin@example.com" --userPassword="admin" --templateLocation="./my-template" --templateType="local"
+npx directus-template-cli@latest import-backend-data -p --directusUrl="http://localhost:8055" --userEmail="admin@example.com" --userPassword="admin" --templateLocation="./my-template" --templateType="local"
 ```
 
 Partial apply (apply only some of the parts of a template to the instance):
 
 ```
-npx directus-template-cli@latest apply -p --directusUrl="http://localhost:8055" --userEmail="admin@example.com" --userPassword="your-password" --templateLocation="./my-template" --templateType="local" --partial --schema --permissions --no-content
+npx directus-template-cli@latest import-backend-data -p --directusUrl="http://localhost:8055" --userEmail="admin@example.com" --userPassword="your-password" --templateLocation="./my-template" --templateType="local" --partial --schema --permissions --no-content
 
 ```
-
 Available flags:
 
 - `--directusUrl`: URL of the Directus instance to apply the template to (required)
@@ -231,7 +232,7 @@ Available flags:
 When using `--partial`, you can also use `--no` flags to exclude specific components from being applied. For example:
 
 ```
-npx directus-template-cli@latest apply -p --directusUrl="http://localhost:8055" --userEmail="admin@example.com" --userPassword="your-password" --templateLocation="./my-template" --templateType="local" --partial --no-content --no-users
+npx directus-template-cli@latest import-backend-data -p --directusUrl="http://localhost:8055" --userEmail="admin@example.com" --userPassword="your-password" --templateLocation="./my-template" --templateType="local" --partial --no-content --no-users
 ```
 
 This command will apply the template but exclude content and users. Available `--no` flags include:
@@ -263,7 +264,7 @@ When applying templates, certain components have dependencies on others. Here ar
 When using the `--partial` flag, keep these dependencies in mind. For example:
 
 ```
-npx directus-template-cli@latest apply -p --directusUrl="http://localhost:8055" --directusToken="admin-token-here" --templateLocation="./my-template" --templateType="local" --partial --users
+npx directus-template-cli@latest import-backend-data -p --directusUrl="http://localhost:8055" --directusToken="admin-token-here" --templateLocation="./my-template" --templateType="local" --partial --users
 ```
 
 This command will automatically include `--permissions` and `--schema` along with `--users`, even if not explicitly specified.
@@ -297,6 +298,55 @@ Exceptions:
 **Your Collections:**
 
 For data in your own user-created collections, if an item has the same primary key, the data will be overwritten with the incoming data from the template.
+
+---
+
+## Sync Template to Remote Directus
+
+The `sync-template` command syncs a template to an existing empty project directory and connects to a **running remote Directus** instance. This is useful when:
+
+- You have a blank Directus running (e.g., on Directus Cloud or a remote server)
+- You want to initialize a project with template files and import data
+
+```bash
+mkdir my-project && cd my-project
+npx directus-template-cli@latest sync-template --template=agency-os --frontend=nuxt --directusUrl="https://your-directus.example.com" --directusToken="your-admin-token"
+```
+
+**What it does:**
+1. Copies template files to the current directory (overwrites existing)
+2. Connects to the running Directus at `--directusUrl`
+3. Imports schema/data via the API
+4. Sets up frontend env files and installs dependencies
+
+### Command Options
+
+```
+npx directus-template-cli@latest sync-template --template=<name> --directusUrl=<url> --directusToken=<token> [--frontend=<type>] [--directory=<path>]
+```
+
+Available flags:
+- `--template` (required): Template name or GitHub URL
+- `--directusUrl` (required): Running Directus URL
+- `--directusToken` (required): Admin access token
+- `--frontend`: Frontend type (nuxt, nextjs, astro, etc.) - prompted if template has multiple
+- `--directory`: Target directory (default: current directory)
+- `--installDeps`: Install frontend dependencies (default: true)
+- `--disableTelemetry`: Disable telemetry collection
+
+### Workflow Examples
+
+**From blank Directus Cloud instance to local project:**
+```bash
+mkdir my-project && cd my-project
+sync-template --template=agency-os --frontend=nuxt --directusUrl="https://my-project.directus.app" --directusToken="xxx"
+```
+
+**Using GitHub URL for custom template:**
+```bash
+mkdir my-project && cd my-project
+sync-template --template="https://github.com/owner/repo/tree/main/agency-os" --directusUrl="http://localhost:8055" --directusToken="xxx"
+```
 
 ---
 

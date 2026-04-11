@@ -6,14 +6,13 @@ import * as path from 'pathe'
 import * as customFlags from '../flags/common.js'
 import {BSL_LICENSE_CTA, BSL_LICENSE_HEADLINE, BSL_LICENSE_TEXT, DIRECTUS_PINK, DIRECTUS_PURPLE, SEPARATOR } from '../lib/constants.js'
 import {type ApplyFlags, validateInteractiveFlags, validateProgrammaticFlags} from '../lib/load/apply-flags.js'
-import apply from '../lib/load/index.js'
+import importBackendData from '../lib/load/index.js'
 import {loadGenerateToken} from '../lib/load/generate-token.js'
 import {animatedBunny} from '../lib/utils/animated-bunny.js'
-import {getDirectusEmailAndPassword, getDirectusToken, getDirectusUrl, initializeDirectusApi} from '../lib/utils/auth.js'
+import {FreshDirectusStatus, askFreshDirectusConfirmation, getDirectusEmailAndPassword, getDirectusToken, getDirectusUrl, initializeDirectusApi, isFreshDirectus} from '../lib/utils/auth.js'
 import catchError from '../lib/utils/catch-error.js'
-import {getCommunityTemplates, getGithubTemplate, getInteractiveLocalTemplate, getLocalTemplate} from '../lib/utils/get-template.js'
+import {getCommunityTemplates, getGithubTemplate, getInteractiveLocalTemplate, getLocalTemplate, getResultCrafterTemplates} from '../lib/utils/get-template.js'
 import {logger} from '../lib/utils/logger.js'
-import openUrl from '../lib/utils/open-url.js'
 import { shutdown, track } from '../services/posthog.js'
 import { BaseCommand } from './base.js'
 interface Template {
@@ -21,12 +20,12 @@ interface Template {
   templateName: string
 }
 
-export default class ApplyCommand extends BaseCommand {
-  static description = 'Apply a template to a blank Directus instance.'
+export default class ImportBackendDataCommand extends BaseCommand {
+  static description = 'Import backend template (schema, data, extensions) into a running Directus instance.'
 static examples = [
-    '$ directus-template-cli apply',
-    '$ directus-template-cli apply -p --directusUrl="http://localhost:8055" --directusToken="admin-token-here" --templateLocation="./my-template" --templateType="local"',
-    '$ directus-template-cli@beta apply -p --directusUrl="http://localhost:8055" --directusToken="admin-token-here" --templateLocation="./my-template" --templateType="local" --partial --no-content --no-users',
+    '$ directus-template-cli import-backend-data',
+    '$ directus-template-cli import-backend-data -p --directusUrl="http://localhost:8055" --directusToken="admin-token-here" --templateLocation="./my-template" --templateType="local"',
+    '$ directus-template-cli@beta import-backend-data -p --directusUrl="http://localhost:8055" --directusToken="admin-token-here" --templateLocation="./my-template" --templateType="local" --partial --no-content --no-users',
   ]
 static flags = {
     content: Flags.boolean({
@@ -112,7 +111,7 @@ static flags = {
    * @returns {Promise<void>} - Returns nothing
    */
   public async run(): Promise<void> {
-    const {flags} = await this.parse(ApplyCommand)
+    const {flags} = await this.parse(ImportBackendDataCommand)
     const typedFlags = flags as unknown as ApplyFlags
 
     await (typedFlags.programmatic ? this.runProgrammatic(typedFlags) : this.runInteractive(typedFlags))
@@ -135,9 +134,9 @@ static flags = {
         message: 'What type of template would you like to apply?',
       options: [
         {label: 'Community templates', value: 'community'},
+        {label: 'ResultCrafter templates', value: 'resultcrafter'},
         {label: 'From a local directory', value: 'local'},
         {label: 'From a public GitHub repository', value: 'github'},
-        {label: 'Get premium templates', value: 'directus-plus'},
       ],
     })
 
@@ -146,6 +145,16 @@ static flags = {
     switch (templateType) {
     case 'community': {
       const templates = await getCommunityTemplates()
+      const selectedTemplate = await select({
+        message: 'Select a template.',
+        options: templates.map(t => ({label: t.templateName, value: t})),
+      })
+      template = selectedTemplate as Template
+      break
+    }
+
+    case 'resultcrafter': {
+      const templates = await getResultCrafterTemplates()
       const selectedTemplate = await select({
         message: 'Select a template.',
         options: templates.map(t => ({label: t.templateName, value: t})),
@@ -169,13 +178,6 @@ static flags = {
       template = await this.selectLocalTemplate(localTemplateDir as string)
       break
     }
-
-    case 'directus-plus': {
-      openUrl('https://directus.io/plus?utm_source=directus-template-cli&utm_content=apply-command')
-      log.info('Redirecting to Directus website.')
-      if (!validatedFlags.noExit) process.exit(0)
-      return
-    }
     }
 
     log.info(`You selected ${ux.colorize(DIRECTUS_PINK, template.templateName)}`)
@@ -184,9 +186,20 @@ static flags = {
     const directusUrl = await getDirectusUrl()
     validatedFlags.directusUrl = directusUrl as string
 
+    // Check if Directus is fresh (no admin existing)
+    let showOnboarding = false
+    const freshStatus = await isFreshDirectus(directusUrl as string)
+
+    if (freshStatus === FreshDirectusStatus.FRESH) {
+      showOnboarding = true
+    } else if (freshStatus === FreshDirectusStatus.UNKNOWN) {
+      const needsOnboarding = await askFreshDirectusConfirmation(directusUrl as string)
+      showOnboarding = needsOnboarding
+    }
+
     // Prompt for login method
     const loginMethod = await select({
-      message: 'How do you want to log in?',
+      message: showOnboarding ? 'Complete the onboarding above, then how do you want to log in?' : 'How do you want to log in?',
       options: [
         {label: 'Directus Access Token', value: 'token'},
         {label: 'Email and Password', value: 'email'},
@@ -194,7 +207,7 @@ static flags = {
     })
 
     if (loginMethod === 'token') {
-      const directusToken = await getDirectusToken(directusUrl as string)
+      const directusToken = await getDirectusToken(directusUrl as string, showOnboarding)
       validatedFlags.directusToken = directusToken as string
     } else {
       const {userEmail, userPassword} = await getDirectusEmailAndPassword()
@@ -226,7 +239,7 @@ static flags = {
         });
       }
 
-      await apply(template.directoryPath, validatedFlags)
+      await importBackendData(template.directoryPath, validatedFlags)
 
       ux.action.stop()
 
@@ -321,7 +334,7 @@ static flags = {
       });
     }
 
-    await apply(template.directoryPath, validatedFlags)
+    await importBackendData(template.directoryPath, validatedFlags)
 
     ux.action.stop()
 

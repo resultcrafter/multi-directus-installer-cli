@@ -1,4 +1,4 @@
-import {isCancel, log, password, text} from '@clack/prompts'
+import {isCancel, log, password, select, text} from '@clack/prompts'
 import {readMe, readItems} from '@directus/sdk'
 import {ux} from '@oclif/core'
 import process from 'node:process'
@@ -7,11 +7,71 @@ import { DEFAULT_DIRECTUS_URL } from '../../lib/constants.js'
 import {api} from '../sdk.js'
 import catchError from './catch-error.js'
 import validateUrl from './validate-url.js'
+
 interface AuthFlags {
   directusToken?: string;
   directusUrl: string;
   userEmail?: string;
   userPassword?: string;
+}
+
+export enum FreshDirectusStatus {
+  FRESH = 'fresh',
+  EXISTING = 'existing',
+  UNKNOWN = 'unknown',
+}
+
+export async function isFreshDirectus(directusUrl: string): Promise<FreshDirectusStatus> {
+  try {
+    const response = await fetch(`${directusUrl}/users?limit=1`, {
+      method: 'GET',
+      headers: {'Content-Type': 'application/json'},
+    })
+
+    if (response.status === 401 || response.status === 403) {
+      return FreshDirectusStatus.FRESH
+    }
+
+    if (response.ok) {
+      const data = await response.json()
+      if (data.data && data.data.length > 0) {
+        return FreshDirectusStatus.EXISTING
+      }
+    }
+
+    return FreshDirectusStatus.UNKNOWN
+  } catch {
+    return FreshDirectusStatus.UNKNOWN
+  }
+}
+
+export async function showOnboardingInstructions(directusUrl: string): Promise<void> {
+  log.info('')
+  log.info('It looks like this is a fresh Directus instance. Follow these steps to create an admin account:')
+  log.info('')
+  log.info(`  1. Open Directus: ${directusUrl}`)
+  log.info('  2. Create your first admin account (name, email, password)')
+  log.info('  3. Log in with your new account')
+  log.info('  4. Generate an admin token:')
+  log.info('     - Click the user circle icon in the left bottom corner')
+  log.info('     - Select "Your Profile"')
+  log.info('     - Scroll down to the "Token" section')
+  log.info('     - In the empty text field, click the PLUS icon on the right to generate a token')
+  log.info('     - Copy and save the generated token in a safe place')
+  log.info('     - IMPORTANT: Click the "Save" button (round circle, upper right corner) to save the token')
+  log.info('')
+}
+
+export async function askFreshDirectusConfirmation(directusUrl: string): Promise<boolean> {
+  const response = await select({
+    message: 'Is this a fresh Directus instance with no existing admin account?',
+    options: [
+      {label: 'Yes, guide me through setup', value: 'yes'},
+      {label: 'No, I have an existing admin account', value: 'no'},
+    ],
+  })
+
+  return response === 'yes'
 }
 
 /**
@@ -49,11 +109,16 @@ export async function getDirectusUrl() {
 /**
  * Get the Directus token from the user
  * @param directusUrl - The Directus URL
+ * @param showOnboarding - Whether to show onboarding instructions for fresh Directus
  * @returns The Directus token
  */
-export async function getDirectusToken(directusUrl: string) {
+export async function getDirectusToken(directusUrl: string, showOnboarding: boolean = false) {
+  if (showOnboarding) {
+    await showOnboardingInstructions(directusUrl)
+  }
+
   const directusToken = await text({
-    message: 'What is your Directus Admin Token?',
+    message: 'Paste your admin token:',
     placeholder: 'admin-token-here',
   })
 
@@ -71,11 +136,11 @@ export async function getDirectusToken(directusUrl: string) {
     catchError(error, {
       context: {
         directusUrl,
-        message: 'Invalid token. Please try again.',
+        message: 'Invalid token. Please check and try again.',
         operation: 'getDirectusToken',
       },
     })
-    return getDirectusToken(directusUrl)
+    return getDirectusToken(directusUrl, showOnboarding)
   }
 }
 

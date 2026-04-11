@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import {fileURLToPath} from 'node:url'
 import path, {dirname} from 'pathe'
 
-import {COMMUNITY_TEMPLATE_REPO} from '../constants.js'
+import {COMMUNITY_TEMPLATE_REPO, DEFAULT_REPO} from '../constants.js'
 import resolvePathAndCheckExistence from './path.js'
 import {readAllTemplates, readTemplate} from './read-templates.js'
 import {transformGitHubUrl} from './transform-github-url.js'
@@ -33,6 +33,26 @@ export async function getCommunityTemplates(): Promise<Template[]> {
     return await readAllTemplates(dir)
   } catch (error) {
     throw new Error(`Failed to download community templates: ${error}`)
+  }
+}
+
+export async function getResultCrafterTemplates(): Promise<Template[]> {
+  const downloadDir = resolvePathAndCheckExistence(path.join(__dirname, '..', 'downloads', 'resultcrafter'), false)
+
+  if (!downloadDir) {
+    throw new Error(`Invalid download directory: ${path.join(__dirname, '..', 'downloads', 'resultcrafter')}`)
+  }
+
+  try {
+    const gigetString = `gh:${DEFAULT_REPO.owner}/${DEFAULT_REPO.repo}#${DEFAULT_REPO.ref}`
+    const {dir} = await downloadTemplate(gigetString, {
+      dir: downloadDir,
+      force: true,
+    })
+
+    return await readAllTemplates(dir)
+  } catch (error) {
+    throw new Error(`Failed to download ResultCrafter templates: ${error}`)
   }
 }
 
