@@ -560,7 +560,7 @@ export async function init({dir, flags, cliRoot}: {dir: string, flags: InitFlags
 
     let nextSteps: string
     if (flags.blank) {
-      const importText = pinkText('directus-template-cli import-backend-data')
+      const importText = pinkText('multi-directus-installer-cli import-backend-data')
       nextSteps = `${directusLoginText}${frontendUrlText}${frontendStartCmd}${projectText}${readmeText}\n- Directus is already running\n- To apply a template: ${importText}`
       note(nextSteps, 'Blank Directus Ready')
     } else {

@@ -109,7 +109,7 @@ export function track({
 
   phClient.capture({
     distinctId,
-    event: `directus_template_cli.${command}.${lifecycle}`,
+    event: `multi_directus_installer_cli.${command}.${lifecycle}`,
     properties: {eventProperties}
   })
 

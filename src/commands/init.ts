@@ -65,11 +65,11 @@ export default class InitCommand extends BaseCommand {
   }
 static description = 'Initialize a new Directus + Frontend monorepo using official or community starters.'
 static examples = [
-    '$ directus-template-cli init',
-    '$ directus-template-cli init my-project',
-    '$ directus-template-cli init --frontend=nextjs --template=simple-cms',
-    '$ directus-template-cli init my-project --frontend=nextjs --template=simple-cms',
-    '$ directus-template-cli init my-project --blank',
+    '$ multi-directus-installer-cli init',
+    '$ multi-directus-installer-cli init my-project',
+    '$ multi-directus-installer-cli init --frontend=nextjs --template=simple-cms',
+    '$ multi-directus-installer-cli init my-project --frontend=nextjs --template=simple-cms',
+    '$ multi-directus-installer-cli init my-project --blank',
   ]
 static flags = {
     blank: Flags.boolean({
@@ -99,7 +99,7 @@ static flags = {
       description: 'Override the default directory',
     }),
     template: Flags.string({
-      description: 'Template name (e.g., simple-cms) or GitHub URL (e.g., https://github.com/directus-labs/starters/tree/main/simple-cms)',
+      description: 'Template name (e.g., simple-cms) or GitHub URL (e.g., https://github.com/resultcrafter/multi-directus-starters/tree/main/simple-cms)',
     }),
   }
 private targetDir = '.'

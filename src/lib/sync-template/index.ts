@@ -59,7 +59,7 @@ export default async function syncTemplate({
       })
       templateDir = result.dir
     } else {
-      const parsedUrl = parseGitHubUrl(`resultcrafter/directus-starters/${template}`)
+      const parsedUrl = parseGitHubUrl(`resultcrafter/multi-directus-starters/${template}`)
       const authToken = await getGitHubToken()
       const result = await downloadTemplate(createGigetString(parsedUrl), {
         dir: tempDir,

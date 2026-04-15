@@ -15,11 +15,11 @@ export const DEFAULT_REPO = {
   owner: 'resultcrafter',
   path: '',
   ref: 'main',
-  repo: 'directus-starters',
-  url: 'https://github.com/resultcrafter/directus-starters',
+  repo: 'multi-directus-starters',
+  url: 'https://github.com/resultcrafter/multi-directus-starters',
 }
 
-export const POSTHOG_PUBLIC_KEY = 'phc_STopE6gj6LDIjYonVF7493kQJK8S4v0Xrl6YPr2z9br'
+export const POSTHOG_PUBLIC_KEY = 'phc_mVQgXUytCfw98wRYSSz7qf4eK6vJiLmyLMNP7cdyqZqN'
 export const POSTHOG_HOST = 'https://us.i.posthog.com'
 
 export const DEFAULT_BRANCH = 'main'

@@ -28,7 +28,7 @@ class Logger {
   private initializeLogFile(): void {
     // @ts-ignore - ignore
     const timestamp = new Date().toISOString().replaceAll(/[.:]/g, '-')
-    const logDir = path.join(process.cwd(), '.directus-template-cli', 'logs')
+    const logDir = path.join(process.cwd(), '.multi-directus-installer-cli', 'logs')
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, {recursive: true})
     }

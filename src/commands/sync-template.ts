@@ -20,8 +20,8 @@ export interface SyncTemplateFlags {
 export default class SyncTemplateCommand extends BaseCommand {
   static description = 'Sync a template to an existing empty project directory and import into running Directus.'
   static examples = [
-    '$ directus-template-cli sync-template --template=agency-os --directusUrl="http://localhost:8055" --directusToken="xxx" --frontend="nuxt"',
-    '$ directus-template-cli sync-template --template=https://github.com/owner/repo/tree/main/template --directusUrl="https://directus.example.com" --directusToken="xxx"',
+    '$ multi-directus-installer-cli sync-template --template=agency-os --directusUrl="http://localhost:8055" --directusToken="xxx" --frontend="nuxt"',
+    '$ multi-directus-installer-cli sync-template --template=https://github.com/owner/repo/tree/main/template --directusUrl="https://directus.example.com" --directusToken="xxx"',
   ]
   static flags = {
     disableTelemetry,

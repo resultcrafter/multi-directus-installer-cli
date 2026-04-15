@@ -23,9 +23,9 @@ interface Template {
 export default class ImportBackendDataCommand extends BaseCommand {
   static description = 'Import backend template (schema, data, extensions) into a running Directus instance.'
 static examples = [
-    '$ directus-template-cli import-backend-data',
-    '$ directus-template-cli import-backend-data -p --directusUrl="http://localhost:8055" --directusToken="admin-token-here" --templateLocation="./my-template" --templateType="local"',
-    '$ directus-template-cli@beta import-backend-data -p --directusUrl="http://localhost:8055" --directusToken="admin-token-here" --templateLocation="./my-template" --templateType="local" --partial --no-content --no-users',
+    '$ multi-directus-installer-cli import-backend-data',
+    '$ multi-directus-installer-cli import-backend-data -p --directusUrl="http://localhost:8055" --directusToken="admin-token-here" --templateLocation="./my-template" --templateType="local"',
+    '$ multi-directus-installer-cli@beta import-backend-data -p --directusUrl="http://localhost:8055" --directusToken="admin-token-here" --templateLocation="./my-template" --templateType="local" --partial --no-content --no-users',
   ]
 static flags = {
     content: Flags.boolean({

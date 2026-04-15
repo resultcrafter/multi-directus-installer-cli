@@ -29,9 +29,9 @@ export default class CreateDbCommand extends BaseCommand {
   static description = 'Create a PostgreSQL database and user for a project'
 
   static examples = [
-    '$ directus-template-cli create-db --project-name myproject',
-    '$ directus-template-cli create-db myproject --host localhost',
-    '$ directus-template-cli create-db --project-name myproject --host pg.example.com --port 5432',
+    '$ multi-directus-installer-cli create-db --project-name myproject',
+    '$ multi-directus-installer-cli create-db myproject --host localhost',
+    '$ multi-directus-installer-cli create-db --project-name myproject --host pg.example.com --port 5432',
   ]
 
   static flags = {
@@ -61,7 +61,7 @@ export default class CreateDbCommand extends BaseCommand {
 
     if (!projectName) {
       this.error('Error: --project-name is required')
-      this.log(chalk.yellow('Usage: directus-template-cli create-db --project-name <name> [--host <host>] [--port <port>]'))
+      this.log(chalk.yellow('Usage: multi-directus-installer-cli create-db --project-name <name> [--host <host>] [--port <port>]'))
       process.exit(1)
     }
 

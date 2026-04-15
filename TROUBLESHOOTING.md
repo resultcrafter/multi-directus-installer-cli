@@ -7,7 +7,7 @@ This guide covers common issues when deploying Directus using the CLI's 3-step w
 Before starting, ensure:
 - [ ] `gh` CLI is installed: https://cli.github.com
 - [ ] `gh auth login` has been run and authenticated
-- [ ] GitHub user has access to `resultcrafter/directus-starters` (for private templates)
+- [ ] GitHub user has access to `resultcrafter/multi-directus-starters` (for private templates)
 - [ ] Docker is installed and running
 - [ ] PostgreSQL is accessible (external or CLI's built-in shared postgres)
 - [ ] DNS is configured for your subdomain
@@ -19,7 +19,7 @@ Before starting, ensure:
 ### Issue: Shared PostgreSQL won't start
 
 ```bash
-cd ~/.directus-template-cli/scripts/shared-postgres
+cd ~/.multi-directus-installer-cli/scripts/shared-postgres
 docker compose up -d
 docker compose logs
 ```
@@ -48,7 +48,7 @@ Code: ERR_TTY_INIT_FAILED
 
 **Solution:** Use `script` command to fake a TTY:
 ```bash
-script -q -c "directus-template-cli init my-project --blank" /dev/null
+script -q -c "multi-directus-installer-cli init my-project --blank" /dev/null
 ```
 
 Or use environment variable to skip prompts (if available in your CLI version).
@@ -59,7 +59,7 @@ Or use environment variable to skip prompts (if available in your CLI version).
 
 **Error:**
 ```
-Failed to download https://api.github.com/repos/resultcrafter/directus-starters/tarball/main: 404 Not Found
+Failed to download https://api.github.com/repos/resultcrafter/multi-directus-starters/tarball/main: 404 Not Found
 ```
 
 **Cause:** 
@@ -72,7 +72,7 @@ Failed to download https://api.github.com/repos/resultcrafter/directus-starters/
 gh auth status
 
 # Check repo access
-gh api repos/resultcrafter/directus-starters
+gh api repos/resultcrafter/multi-directus-starters
 ```
 
 **Solutions:**
@@ -80,18 +80,18 @@ gh api repos/resultcrafter/directus-starters
 1. **Set GIGET_AUTH environment variable:**
 ```bash
 export GIGET_AUTH=$(gh auth token)
-directus-template-cli init my-project --blank --template=blank
+multi-directus-installer-cli init my-project --blank --template=blank
 ```
 
 2. **Or use local template (if already cloned):**
 ```bash
-directus-template-cli init my-project --blank --template=/path/to/local/blank
+multi-directus-installer-cli init my-project --blank --template=/path/to/local/blank
 ```
 
 3. **Verify GitHub access to private repo:**
 ```bash
 gh auth login
-# Ensure user has read access to resultcrafter/directus-starters
+# Ensure user has read access to resultcrafter/multi-directus-starters
 ```
 
 ---
@@ -122,7 +122,7 @@ gh auth login
 
 2. Use the token:
 ```bash
-directus-template-cli apply \
+multi-directus-installer-cli apply \
   --directusUrl=https://your-directus.example.com \
   --directusToken="your-new-token" \
   --templateLocation=./my-template
@@ -146,7 +146,7 @@ Database error: relation "..." does not exist
 # 2. Clear Directus cache
 docker compose exec directus sh -c "rm -rf /directus/data/cache/*"
 # 3. Re-apply template
-directus-template-cli apply --directusUrl=... --directusToken=... --templateLocation=...
+multi-directus-installer-cli apply --directusUrl=... --directusToken=... --templateLocation=...
 ```
 
 ---

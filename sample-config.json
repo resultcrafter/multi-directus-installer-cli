@@ -2,5 +2,5 @@
   "disableTelemetry": true,
   "distinctId": null,
   "logToFile": true,
-  "logFile": "directus-template-cli.log"
+  "logFile": "multi-directus-installer-cli.log"
 }

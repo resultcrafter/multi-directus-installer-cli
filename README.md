@@ -1,4 +1,4 @@
-# Directus Template CLI
+# Multi Directus Installer CLI
 
 A streamlined CLI tool for creating new Directus projects and managing Directus templates - making it easy to apply and extract template configurations across instances.
 
@@ -15,10 +15,10 @@ This tool is best suited for:
 - **Performance**: Remote operations (extract/apply) are rate-limited to 10 requests/second using bottleneck. Processing time varies based on your instance size (collections, items, assets).
   - **Version Compatibility**:
   - v0.5.0+: Compatible with Directus 11 and up
-  - v0.4.0: Use for Directus 10 compatibility (`npx directus-template-cli@0.4 extract/apply`)
+  - v0.4.0: Use for Directus 10 compatibility (`npx multi-directus-installer-cli@0.4 extract/apply`)
   - **Node.js Compatibility**: Node.js 20.x, 21.x, 22.x, or 23.x recommended. Node.js 24.x has known issues with file uploads.
 
-Using the @latest tag ensures you're receiving the latest version of the packaged templates with the CLI. You can review [the specific versions on NPM](https://www.npmjs.com/package/directus-template-cli) and use @{version} syntax to apply the templates included with that version.
+Using the @latest tag ensures you're receiving the latest version of the packaged templates with the CLI. You can review [the specific versions on NPM](https://www.npmjs.com/package/multi-directus-installer-cli) and use @{version} syntax to apply the templates included with that version.
 
 ## Initializing a New Project
 
@@ -27,7 +27,7 @@ The CLI can initialize a new Directus project with an optional frontend framewor
 1. Run the following command and follow the interactive prompts:
 
 ```
-npx directus-template-cli@latest init
+npx multi-directus-installer-cli@latest init
 ```
 
 You'll be guided through:
@@ -41,15 +41,15 @@ You'll be guided through:
 You can also provide arguments and flags:
 
 ```
-npx directus-template-cli@latest init my-project
+npx multi-directus-installer-cli@latest init my-project
 ```
 
 The first argument (`my-project` in the example above) specifies the directory where the project will be created. If not provided, you'll be prompted to enter a directory during the interactive process.
 
 ```
-npx directus-template-cli@latest init --frontend=nextjs --template=cms
-npx directus-template-cli@latest init my-project --frontend=nextjs --template=cms
-npx directus-template-cli@latest init --template=https://github.com/directus-labs/starters/tree/main/cms
+npx multi-directus-installer-cli@latest init --frontend=nextjs --template=cms
+npx multi-directus-installer-cli@latest init my-project --frontend=nextjs --template=cms
+npx multi-directus-installer-cli@latest init --template=https://github.com/directus-labs/starters/tree/main/cms
 ```
 
 
@@ -70,25 +70,25 @@ For flexible workflows, you can start a blank Directus instance first and apply 
 **Step 1: Database Setup** (if using external PostgreSQL)
 ```bash
 # Start CLI's built-in shared PostgreSQL (one-time)
-cd ~/.directus-template-cli/scripts/shared-postgres
+cd ~/.multi-directus-installer-cli/scripts/shared-postgres
 docker compose up -d
 ```
 
 **Step 2: Install Blank Directus**
 ```bash
-npx directus-template-cli@latest init my-project --blank
+npx multi-directus-installer-cli@latest init my-project --blank
 # Select: External PostgreSQL (auto-create user) or Embedded PostgreSQL
 ```
 
 This starts Directus without applying a template. Output shows:
 ```
 Directus is running at http://localhost:8055
-To apply a template later: directus-template-cli import-backend-data
+To apply a template later: multi-directus-installer-cli import-backend-data
 ```
 
 **Step 3: Apply Backend Template**
 ```bash
-npx directus-template-cli@latest import-backend-data --directusUrl=http://localhost:8055 --directusToken="your-token"
+npx multi-directus-installer-cli@latest import-backend-data --directusUrl=http://localhost:8055 --directusToken="your-token"
 ```
 
 **Use cases for 3-step setup:**
@@ -100,17 +100,17 @@ You can use any public GitHub repository URL for the `--template` parameter, poi
 
 ### Private Repository Access
 
-If you have access to private GitHub repositories containing templates (e.g., `resultcrafter/directus-starters`), you need:
+If you have access to private GitHub repositories containing templates (e.g., `resultcrafter/multi-directus-starters`), you need:
 
 1. **Install the `gh` CLI**: https://cli.github.com
 2. **Authenticate with GitHub**: Run `gh auth login`
-3. **Ensure repository access**: The authenticated GitHub user must have access to the private repository (e.g., `resultcrafter/directus-starters`)
+3. **Ensure repository access**: The authenticated GitHub user must have access to the private repository (e.g., `resultcrafter/multi-directus-starters`)
 
 The CLI automatically detects your GitHub authentication token from `gh`. If you prefer to use an explicit token, you can set the `GIGET_AUTH` environment variable:
 
 ```bash
 export GIGET_AUTH=$(gh auth token)
-npx directus-template-cli@latest init --template=agency-os
+npx multi-directus-installer-cli@latest init --template=agency-os
 ```
 
 ### Creating Custom Templates
@@ -178,7 +178,7 @@ When you use this template with the `init` command, it will:
 4. Run the following command on the terminal and follow the prompts.
 
 ```
-npx directus-template-cli@latest import-backend-data
+npx multi-directus-installer-cli@latest import-backend-data
 ```
 
 You can choose from community templates, ResultCrafter templates, or from a local directory or a public GitHub repository.
@@ -194,19 +194,19 @@ By default, the CLI will run in interactive mode. For CI/CD pipelines or automat
 Using a token:
 
 ```
-npx directus-template-cli@latest import-backend-data -p --directusUrl="http://localhost:8055" --directusToken="admin-token-here" --templateLocation="./my-template" --templateType="local"
+npx multi-directus-installer-cli@latest import-backend-data -p --directusUrl="http://localhost:8055" --directusToken="admin-token-here" --templateLocation="./my-template" --templateType="local"
 ```
 
 Using email/password:
 
 ```
-npx directus-template-cli@latest import-backend-data -p --directusUrl="http://localhost:8055" --userEmail="admin@example.com" --userPassword="admin" --templateLocation="./my-template" --templateType="local"
+npx multi-directus-installer-cli@latest import-backend-data -p --directusUrl="http://localhost:8055" --userEmail="admin@example.com" --userPassword="admin" --templateLocation="./my-template" --templateType="local"
 ```
 
 Partial apply (apply only some of the parts of a template to the instance):
 
 ```
-npx directus-template-cli@latest import-backend-data -p --directusUrl="http://localhost:8055" --userEmail="admin@example.com" --userPassword="your-password" --templateLocation="./my-template" --templateType="local" --partial --schema --permissions --no-content
+npx multi-directus-installer-cli@latest import-backend-data -p --directusUrl="http://localhost:8055" --userEmail="admin@example.com" --userPassword="your-password" --templateLocation="./my-template" --templateType="local" --partial --schema --permissions --no-content
 
 ```
 Available flags:
@@ -232,7 +232,7 @@ Available flags:
 When using `--partial`, you can also use `--no` flags to exclude specific components from being applied. For example:
 
 ```
-npx directus-template-cli@latest import-backend-data -p --directusUrl="http://localhost:8055" --userEmail="admin@example.com" --userPassword="your-password" --templateLocation="./my-template" --templateType="local" --partial --no-content --no-users
+npx multi-directus-installer-cli@latest import-backend-data -p --directusUrl="http://localhost:8055" --userEmail="admin@example.com" --userPassword="your-password" --templateLocation="./my-template" --templateType="local" --partial --no-content --no-users
 ```
 
 This command will apply the template but exclude content and users. Available `--no` flags include:
@@ -264,7 +264,7 @@ When applying templates, certain components have dependencies on others. Here ar
 When using the `--partial` flag, keep these dependencies in mind. For example:
 
 ```
-npx directus-template-cli@latest import-backend-data -p --directusUrl="http://localhost:8055" --directusToken="admin-token-here" --templateLocation="./my-template" --templateType="local" --partial --users
+npx multi-directus-installer-cli@latest import-backend-data -p --directusUrl="http://localhost:8055" --directusToken="admin-token-here" --templateLocation="./my-template" --templateType="local" --partial --users
 ```
 
 This command will automatically include `--permissions` and `--schema` along with `--users`, even if not explicitly specified.
@@ -310,7 +310,7 @@ The `sync-template` command syncs a template to an existing empty project direct
 
 ```bash
 mkdir my-project && cd my-project
-npx directus-template-cli@latest sync-template --template=agency-os --frontend=nuxt --directusUrl="https://your-directus.example.com" --directusToken="your-admin-token"
+npx multi-directus-installer-cli@latest sync-template --template=agency-os --frontend=nuxt --directusUrl="https://your-directus.example.com" --directusToken="your-admin-token"
 ```
 
 **What it does:**
@@ -322,7 +322,7 @@ npx directus-template-cli@latest sync-template --template=agency-os --frontend=n
 ### Command Options
 
 ```
-npx directus-template-cli@latest sync-template --template=<name> --directusUrl=<url> --directusToken=<token> [--frontend=<type>] [--directory=<path>]
+npx multi-directus-installer-cli@latest sync-template --template=<name> --directusUrl=<url> --directusToken=<token> [--frontend=<type>] [--directory=<path>]
 ```
 
 Available flags:
@@ -362,7 +362,7 @@ Note: We do not currently support partial extraction. The entire template will b
 4. Run the following command on the terminal and follow the prompts.
 
 ```
-npx directus-template-cli@latest extract
+npx multi-directus-installer-cli@latest extract
 ```
 
 ### Programmatic Mode
@@ -372,13 +372,13 @@ By default, the CLI will run in interactive mode. For CI/CD pipelines or automat
 Using a token:
 
 ```
-npx directus-template-cli@latest extract -p --templateName="My Template" --templateLocation="./my-template" --directusToken="admin-token-here" --directusUrl="http://localhost:8055"
+npx multi-directus-installer-cli@latest extract -p --templateName="My Template" --templateLocation="./my-template" --directusToken="admin-token-here" --directusUrl="http://localhost:8055"
 ```
 
 Using email/password:
 
 ```
-npx directus-template-cli@latest extract -p --templateName="My Template" --templateLocation="./my-template" --userEmail="admin@example.com" --userPassword="admin" --directusUrl="http://localhost:8055"
+npx multi-directus-installer-cli@latest extract -p --templateName="My Template" --templateLocation="./my-template" --userEmail="admin@example.com" --userPassword="admin" --directusUrl="http://localhost:8055"
 ```
 
 Available flags:
@@ -403,11 +403,11 @@ Similar to the Apply command, you can use environment variables for the Extract 
 
 ## Logs
 
-The Directus Template CLI logs information to a file in the `.directus-template-cli/logs` directory.
+The Directus Template CLI logs information to a file in the `.multi-directus-installer-cli/logs` directory.
 
 Logs are automatically generated for each run of the CLI. Here's how the logging system works:
    - A new log file is created for each CLI run.
-   - Log files are stored in the `.directus-template-cli/logs` directory within your current working directory.
+   - Log files are stored in the `.multi-directus-installer-cli/logs` directory within your current working directory.
    - Each log file is named `run-[timestamp].log`, where `[timestamp]` is the ISO timestamp of when the CLI was initiated.
 
 The logger automatically sanitizes sensitive information such as passwords, tokens, and keys before writing to the log file. But it may not catch everything. Just be aware of this and make sure to remove the log files when they are no longer needed.

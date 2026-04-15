@@ -1,16 +1,16 @@
 {
-  "name": "directus-template-cli",
+  "name": "multi-directus-installer-cli",
   "version": "0.7.8",
   "description": "CLI Utility for applying templates to a Directus instance.",
   "author": "bryantgillespie @bryantgillespie",
   "type": "module",
   "bin": {
-    "directus-template-cli": "./bin/run.js"
+    "multi-directus-installer-cli": "./bin/run.js"
   },
-  "homepage": "https://github.com/directus-labs/directus-template-cli",
+  "homepage": "https://github.com/resultcrafter/multi-directus-installer-cli",
   "license": "MIT",
   "main": "dist/index.js",
-  "repository": "directus-labs/directus-template-cli",
+  "repository": "resultcrafter/multi-directus-installer-cli",
   "files": [
     "/bin",
     "/dist",
@@ -60,8 +60,8 @@
     "typescript": "^5.8.2"
   },
   "oclif": {
-    "bin": "directus-template-cli",
-    "dirname": "directus-template-cli",
+    "bin": "multi-directus-installer-cli",
+    "dirname": "multi-directus-installer-cli",
     "commands": "./dist/commands",
     "plugins": [
       "@oclif/plugin-help",
@@ -85,7 +85,7 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "bugs": "https://github.com/directus-labs/directus-template-cli/issues",
+  "bugs": "https://github.com/resultcrafter/multi-directus-installer-cli/issues",
   "keywords": [
     "directus",
     "templates",

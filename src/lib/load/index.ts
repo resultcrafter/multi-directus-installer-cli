@@ -26,7 +26,7 @@ export default async function importBackendData(dir: string, flags: ApplyFlags) 
   const source = `${dir}/src`
   const isTemplateOk = await checkTemplate(source)
   if (!isTemplateOk) {
-    ux.error('The template is missing the collections, fields, or relations files. Older templates are not supported in v0.4 of directus-template-cli. Try using v0.3 to load older templates npx directus-template-cli@0.3 apply or extract the template using latest version before applying. Exiting...')
+    ux.error('The template is missing the collections, fields, or relations files. Older templates are not supported in v0.4 of multi-directus-installer-cli. Try using v0.3 to load older templates npx multi-directus-installer-cli@0.3 apply or extract the template using latest version before applying. Exiting...')
   }
 
   if (flags.schema) {

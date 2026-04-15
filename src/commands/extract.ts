@@ -32,8 +32,8 @@ export interface ExtractFlags {
 export default class ExtractCommand extends BaseCommand {
   static description = 'Extract a template from a Directus instance.'
 static examples = [
-    '$ directus-template-cli extract',
-    '$ directus-template-cli extract -p --templateName="My Template" --templateLocation="./my-template" --directusToken="admin-token-here" --directusUrl="http://localhost:8055"',
+    '$ multi-directus-installer-cli extract',
+    '$ multi-directus-installer-cli extract -p --templateName="My Template" --templateLocation="./my-template" --directusToken="admin-token-here" --directusUrl="http://localhost:8055"',
   ]
 static flags = {
     directusToken: customFlags.directusToken,

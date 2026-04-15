@@ -14,7 +14,7 @@ templates
 /downloads
 /**/downloads
 .env
-.directus-template-cli/logs
+.multi-directus-installer-cli/logs
 
 tsconfig.tsbuildinfo
 
