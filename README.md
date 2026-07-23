@@ -438,6 +438,16 @@ const fileStream = new File([buffer], filename, { type: mimeType })
 
 **Recommendation:** Use Node.js 22.x for stable file upload behavior with the CLI.
 
+
+## Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [Import & Export Guide](./IMPORT_EXPORT_GUIDE.md) | How the import/export pipeline works, template structure, M2M handling, best practices |
+| [Incident Reports](./INCIDENTS.md) | Post-incident reviews for known bugs (settings arrays, M2M dedup, presets, junction tables) |
+| [Troubleshooting](./TROUBLESHOOTING.md) | Common issues and step-by-step solutions |
+
+
 ## License
 
 This tool is licensed under the [MIT License](https://opensource.org/licenses/MIT).

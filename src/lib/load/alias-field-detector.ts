@@ -37,16 +37,23 @@ export function detectAliasFields(dir: string): AliasFieldInfo[] {
       continue
     }
 
+    // For each M2M field, find the correct junction table
+    // The junction table should have a field that references the M2M target collection
+    
+    // Find all junction relations where the junction table has a field referencing this collection
     const junctionRelations = relations.filter(
       (r: any) => r.related_collection === collection && r.meta?.junction_field && !r.collection.startsWith('directus_')
     )
 
+    // For each junction relation, check if the junction table has a field that references the target collection
+    // The target collection is the collection that the M2M field links to
     for (const jr of junctionRelations) {
       const junctionTable = jr.collection
       const parentJunctionField = jr.field
       const relatedField = jr.meta.junction_field
       const sortField = jr.meta.sort_field || null
 
+      // Find the related relation to get the related collection
       const relatedRelation = relations.find(
         (r: any) => r.collection === junctionTable && r.field === relatedField
       )
@@ -54,16 +61,38 @@ export function detectAliasFields(dir: string): AliasFieldInfo[] {
       if (relatedRelation) {
         const relatedCollection = relatedRelation.related_collection
 
-        aliasFieldsCache.push({
-          collection,
-          field: fieldName,
-          junctionField: parentJunctionField,
-          junctionTable,
-          relatedCollection,
-          relatedField,
-          relationType,
-          sortField
-        })
+        // Check if the junction table has a field that references the target collection
+        // The target collection is determined by looking at what the junction table connects to
+        // other than the parent collection
+        const otherFieldsInJunction = relations.filter(
+          (r: any) => r.collection === junctionTable && r.field !== parentJunctionField && !r.collection.startsWith('directus_')
+        )
+
+        // The correct junction table is the one where the other field references the target collection
+        // We determine the target collection by checking if the field name matches the M2M field name pattern
+        const hasMatchingTargetField = otherFieldsInJunction.some(
+          (r: any) => {
+            const targetCollection = r.related_collection
+            // Check if the target collection name matches the M2M field name pattern
+            // For example, "contacts" field should link to "contacts" collection
+            return targetCollection === fieldName || 
+                   (fieldName.endsWith('s') && targetCollection === fieldName.slice(0, -1)) ||
+                   (!fieldName.endsWith('s') && targetCollection === fieldName + 's')
+          }
+        )
+
+        if (hasMatchingTargetField) {
+          aliasFieldsCache.push({
+            collection,
+            field: fieldName,
+            junctionField: parentJunctionField,
+            junctionTable,
+            relatedCollection,
+            relatedField,
+            relationType,
+            sortField
+          })
+        }
       }
     }
   }

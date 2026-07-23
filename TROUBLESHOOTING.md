@@ -389,3 +389,73 @@ df -h
 free -h
 docker stats --no-stream
 ```
+
+---
+
+## Template Import Issues
+
+### Issue: Duplicate Sidebar Bookmarks (Presets)
+
+**Symptoms:** Sidebar shows multiple copies of "My Accounts", "My Contacts", etc.
+
+**Cause:** Fixed in v0.7.9+. Deduplication used preset.id but template presets have no id field.
+
+**Solution:** Update to v0.7.9+ which deduplicates by (bookmark, collection) key.
+
+---
+
+### Issue: Duplicate Navigation Icons (Module Bar)
+
+**Symptoms:** Sidebar shows 6+ copies of each navigation icon.
+
+**Cause:** Fixed in v0.7.9+. The defu library concatenated module_bar arrays instead of replacing.
+
+**Solution:** Update to v0.7.9+ which replaces array fields. Manual cleanup: go to Settings > Interface > Module Bar and remove duplicates.
+
+---
+
+### Issue: Duplicate Junction Table Entries (M2M)
+
+**Symptoms:** Junction tables have 2x expected entries.
+
+**Cause:** Fixed in v0.7.9+. Template data stored M2M references on both sides.
+
+**Solution:** Update to v0.7.9+ which deduplicates junction entries automatically.
+
+---
+
+### Issue: FK Error on Junction Table Import
+
+**Symptoms:** Invalid foreign key for field in collection junction_table.
+
+**Cause:** Fixed in v0.7.9+. Junction table content files were processed twice.
+
+**Solution:** Update to v0.7.9+. Ensure templates do NOT include junction table content files.
+
+---
+
+### Issue: Template References Non-Existent Entity
+
+**Symptoms:** Invalid foreign key error during import.
+
+**Cause:** Template data references entity IDs that don't exist in target instance.
+
+**Solution:** Verify referenced entities exist. Check M2M arrays reference correct entity IDs.
+
+---
+
+### Issue: File not found Warnings
+
+**Warning:** File not found: crm.json, crm_settings.json
+
+**Cause:** Frontend content files that don't exist in backend-only templates.
+
+**Solution:** Safe to ignore.
+
+---
+
+## Related Documents
+
+- IMPORT_EXPORT_GUIDE.md — How import/export works
+- INCIDENTS.md — Incident reports for known bugs
+- README.md — CLI usage and command reference

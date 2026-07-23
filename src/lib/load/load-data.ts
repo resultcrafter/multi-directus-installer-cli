@@ -214,10 +214,17 @@ async function loadSkeletonRecords(
   ux.action.status = 'Loading skeleton records'
   const collections = readFile('collections', dir)
   const primaryKeyMap = await getCollectionPrimaryKeys(dir)
+  const junctionTables = getJunctionTables(dir)
+  
+  if (junctionTables.size > 0) {
+    ux.stdout(ux.colorize('dim', `-- [loadData] Skipping ${junctionTables.size} junction tables (handled by M2M processor)`))
+  }
+  
   const userCollections = collections
   .filter(item => !item.collection.startsWith('directus_', 0))
   .filter(item => item.schema !== null)
   .filter(item => !item.meta.singleton)
+  .filter(item => !junctionTables.has(item.collection))
 
   const mappings: Map<string, string>[] = []
   if (fileIdMapping && fileIdMapping.size > 0) mappings.push(fileIdMapping)
@@ -373,10 +380,12 @@ async function loadFullData(
 ) {
   ux.action.status = 'Updating records with full data'
   const collections = readFile('collections', dir)
+  const junctionTables = getJunctionTables(dir)
   const userCollections = collections
   .filter(item => !item.collection.startsWith('directus_', 0))
   .filter(item => item.schema !== null)
   .filter(item => !item.meta.singleton)
+  .filter(item => !junctionTables.has(item.collection))
 
   const mappings: Map<string, string>[] = []
   if (fileIdMapping && fileIdMapping.size > 0) mappings.push(fileIdMapping)
@@ -484,4 +493,17 @@ function getPrimaryKey(collectionsMap: any, collection: string) {
   }
 
   return collectionsMap[collection]
+}
+
+function getJunctionTables(dir: string): Set<string> {
+  const relations = readFile('relations', dir) as any[]
+  const junctionTables = new Set<string>()
+  
+  for (const relation of relations) {
+    if (relation.meta?.junction_field && !relation.collection.startsWith('directus_')) {
+      junctionTables.add(relation.collection)
+    }
+  }
+  
+  return junctionTables
 }
