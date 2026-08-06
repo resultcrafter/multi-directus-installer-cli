@@ -50,7 +50,7 @@
     "@types/node": "^18",
     "chai": "^5.2.0",
     "eslint": "^9.39.2",
-    "eslint-config-oclif": "^6.0.130",
+    "eslint-config-oclif": "^6.0.153",
     "eslint-config-prettier": "^10",
     "mocha": "^10",
     "oclif": "^4",
